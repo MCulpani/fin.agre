@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Conciliação de Caixa — MVP</title>
+  <style>
+    :root{--bg:#f6f8fb;--card:#fff;--accent:#2b6cb0;--muted:#6b7280}
+    body{font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg);margin:0;padding:24px;color:#111}
+    .wrap{max-width:980px;margin:0 auto}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    h1{font-size:20px;margin:0}
+    .card{background:var(--card);padding:16px;border-radius:12px;box-shadow:0 6px 18px rgba(14,20,30,0.06);}
+    form{display:grid;grid-template-columns:1fr 1fr 120px 120px;gap:10px;align-items:end}
+    label{font-size:12px;color:var(--muted)}
+    input,select{padding:8px;border-radius:8px;border:1px solid #e6e9ef;width:100%;box-sizing:border-box}
+    button{padding:10px 14px;border-radius:10px;border:0;background:var(--accent);color:#fff;cursor:pointer}
+    .summary{display:flex;gap:12px;margin-top:12px}
+    .summary .item{flex:1;padding:12px;border-radius:10px;background:#fff;text-align:center}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:10px;border-bottom:1px solid #eef2f7;text-align:left}
+    .right{text-align:right}
+    .muted{color:var(--muted);font-size:13px}
+    .btn-ghost{background:transparent;border:1px solid #e2e8f0;color:#111;padding:6px 10px;border-radius:8px}
+    .reconciled{background:#edfff3;color:#065f46;padding:6px 8px;border-radius:8px;font-weight:600}
+    .actions button{margin-left:6px}
+    footer{margin-top:18px;color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Conciliação de Caixa — MVP</h1>
+      <div class="muted">Conecte ao Firebase Realtime DB e publique no GitHub Pages</div>
+    </header>
+
+    <section class="card">
+      <form id="txForm">
+        <div>
+          <label for="date">Data</label>
+          <input id="date" type="date" required />
+        </div>
+        <div>
+          <label for="desc">Descrição</label>
+          <input id="desc" type="text" placeholder="Ex: Venda, pagamento" required />
+        </div>
+        <div>
+          <label for="type">Tipo</label>
+          <select id="type">
+            <option value="credit">Crédito</option>
+            <option value="debit">Débito</option>
+          </select>
+        </div>
+        <div>
+          <label for="amount">Valor (R$)</label>
+          <input id="amount" type="number" step="0.01" placeholder="0.00" required />
+        </div>
+        <div style="grid-column:1 / -1;display:flex;gap:8px;margin-top:6px">
+          <button id="addBtn" type="submit">Adicionar transação</button>
+          <button id="clearBtn" type="button" class="btn-ghost">Limpar formulário</button>
+          <button id="syncBtn" type="button" class="btn-ghost">Forçar sincronia</button>
+        </div>
+      </form>
+
+      <div class="summary" id="summary">
+        <div class="item">
+          <div class="muted">Saldo Inicial</div>
+          <div id="initialBalance">R$ 0,00</div>
+        </div>
+        <div class="item">
+          <div class="muted">Entradas</div>
+          <div id="credits">R$ 0,00</div>
+        </div>
+        <div class="item">
+          <div class="muted">Saídas</div>
+          <div id="debits">R$ 0,00</div>
+        </div>
+        <div class="item">
+          <div class="muted">Saldo Atual</div>
+          <div id="balance">R$ 0,00</div>
+        </div>
+      </div>
+
+      <table id="txTable">
+        <thead>
+          <tr><th>Data</th><th>Descrição</th><th>Tipo</th><th class="right">Valor</th><th>Estado</th><th>Ações</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <footer>
+        <div class="muted">Aviso: substitua as credenciais do Firebase no arquivo com suas configurações do projeto. Use regras de segurança adequadas antes de ir pra produção.</div>
+      </footer>
+    </section>
+  </div>
+
+  <!-- Firebase v8 CDN (compatível, fácil de usar no front-end) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <script>
+    // ======= CONFIGURAÇÕES DO FIREBASE (substitua pelas suas) =======
+    // Crie um projeto no console.firebase.google.com → Realtime Database → Obtenha as credenciais
+    var firebaseConfig = {
+      apiKey: "AIzaSyCG_7wihJW2uI7pPgTR7bfQAKXYowQiyaA",
+      authDomain: "conciliacao-caixa.firebaseapp.com",
+      databaseURL: "https://conciliacao-caixa-default-rtdb.firebaseio.com",
+      projectId: "conciliacao-caixa",
+      storageBucket: "conciliacao-caixa.firebasestorage.app",
+      messagingSenderId: "996496087548",
+      appId: "1:996496087548:web:75e98031e8e71dc09ffa79"
+    };
+
+    // Inicializa
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.database();
+
+    // Referência das transações
+    var txRef = db.ref('transactions');
+
+    // UI
+    var form = document.getElementById('txForm');
+    var tableBody = document.querySelector('#txTable tbody');
+    var creditsEl = document.getElementById('credits');
+    var debitsEl = document.getElementById('debits');
+    var balanceEl = document.getElementById('balance');
+    var initialBalanceEl = document.getElementById('initialBalance');
+
+    // Estado local
+    var transactions = {};
+    var initialBalance = 0.00; // você pode mudar isso no DB ou adicionar UI para editar
+
+    // Helpers
+    function fmt(v){
+      return 'R$ ' + Number(v || 0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    }
+
+    function render() {
+      tableBody.innerHTML = '';
+      var credits = 0, debits = 0;
+      Object.keys(transactions).sort(function(a,b){
+        return new Date(transactions[b].date) - new Date(transactions[a].date);
+      }).forEach(function(key){
+        var tx = transactions[key];
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td>'+tx.date+'</td>'+
+                       '<td>'+escapeHtml(tx.desc)+'</td>'+
+                       '<td>'+(tx.type==='credit'?'Crédito':'Débito')+'</td>'+
+                       '<td class="right">'+fmt(tx.amount)+'</td>'+
+                       '<td>'+(tx.reconciled?'<span class="reconciled">Conciliado</span>':'<span class="muted">Pendente</span>')+'</td>'+
+                       '<td class="actions">'
+                       +'<button class="btn-ghost" data-action="toggle" data-id="'+key+'">Toggle</button>'
+                       +'<button class="btn-ghost" data-action="delete" data-id="'+key+'">Excluir</button>'
+                       +'</td>';
+        tableBody.appendChild(tr);
+        if(tx.type==='credit') credits += Number(tx.amount);
+        else debits += Number(tx.amount);
+      });
+      creditsEl.textContent = fmt(credits);
+      debitsEl.textContent = fmt(debits);
+      balanceEl.textContent = fmt(initialBalance + credits - debits);
+      initialBalanceEl.textContent = fmt(initialBalance);
+    }
+
+    // Escapa simples para evitar XSS em descrições
+    function escapeHtml(unsafe) {
+      return String(unsafe)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // Listeners DB
+    txRef.on('value', function(snapshot){
+      var val = snapshot.val() || {};
+      // se você quiser separar config (ex: initialBalance) pode ler em outro nó
+      if(val._initialBalance!==undefined){ initialBalance = Number(val._initialBalance) }
+      // remove internal key if present
+      var data = Object.assign({}, val);
+      delete data._initialBalance;
+      transactions = data;
+      render();
+    });
+
+    // Form submit
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      var date = document.getElementById('date').value;
+      var desc = document.getElementById('desc').value.trim();
+      var type = document.getElementById('type').value;
+      var amount = parseFloat(document.getElementById('amount').value) || 0;
+      if(!date||!desc||amount===0){ alert('Preencha todos os campos corretamente.'); return; }
+      var newRef = txRef.push();
+      newRef.set({ date: date, desc: desc, type: type, amount: amount, reconciled: false }, function(err){
+        if(err) alert('Erro ao salvar: '+err.message); else { form.reset(); }
+      });
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', function(){ form.reset(); });
+    document.getElementById('syncBtn').addEventListener('click', function(){
+      // força leitura do DB
+      txRef.once('value').then(function(s){ transactions = s.val() || {}; render(); });
+    });
+
+    // Delegation para ações na tabela
+    tableBody.addEventListener('click', function(e){
+      var btn = e.target.closest('button'); if(!btn) return;
+      var action = btn.dataset.action; var id = btn.dataset.id;
+      if(action==='delete'){
+        if(confirm('Excluir transação?')) txRef.child(id).remove();
+      } else if(action==='toggle'){
+        var cur = transactions[id];
+        if(!cur) return;
+        txRef.child(id).update({ reconciled: !cur.reconciled });
+      }
+    });
+
+    // Inicial render
+    render();
+
+  </script>
+</body>
+</html>
