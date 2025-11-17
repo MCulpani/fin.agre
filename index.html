@@ -30,6 +30,7 @@
 <body>
   <div class="wrap">
     <header>
+      <div id="syncStatus" style="font-size:12px;color:var(--muted);margin-right:12px">Sincronizando…</div>
       <h1>Conciliação de Caixa — MVP</h1>
       <div class="muted">Conecte ao Firebase Realtime DB e publique no GitHub Pages</div>
     </header>
@@ -172,7 +173,14 @@
         .replace(/'/g, "&#039;");
     }
 
+    // Controle de sincronização
+    function setSync(status){
+      var el = document.getElementById('syncStatus');
+      el.textContent = status ? '✔ Sincronizado' : 'Sincronizando…';
+    }
+
     // Listeners DB
+    setSync(false);
     txRef.on('value', function(snapshot){
       var val = snapshot.val() || {};
       // se você quiser separar config (ex: initialBalance) pode ler em outro nó
