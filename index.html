@@ -63,7 +63,11 @@
           <button id="clearBtn" type="button" class="btn-ghost">Limpar formulário</button>
           <button id="syncBtn" type="button" class="btn-ghost">Forçar sincronia</button>
         </div>
-      </form>
+        <br>
+  <button id="clearForm" class="btn btn-warning w-100">Limpar Formulário</button>
+  <br><br>
+  <button id="exportExcel" class="btn btn-success w-100">Gerar Relatório (Excel)</button>
+</form>
 
       <div class="summary" id="summary">
         <div class="item">
@@ -259,6 +263,23 @@
 
     // inicial render
     render();
-  </script>
+  // Corrigir botão limpar formulário
+const btnClear = document.getElementById('clearForm');
+btnClear.addEventListener('click', () => {
+  document.getElementById('data').value = '';
+  document.getElementById('descricao').value = '';
+  document.getElementById('valor').value = '';
+});
+
+// Gerar relatório Excel
+import("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js").then(() => {
+  document.getElementById('exportExcel').addEventListener('click', () => {
+    const table = document.getElementById('tabelaTransacoes');
+    const wb = XLSX.utils.table_to_book(table, { sheet: "Relatório" });
+    XLSX.writeFile(wb, "relatorio_conciliacao.xlsx");
+  });
+});
+
+</script>
 </body>
 </html>
