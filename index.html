@@ -64,8 +64,8 @@
           <button id="syncBtn" type="button" class="btn-ghost">Forçar sincronia</button>
         </div>
         <br>
-  <button id="clearForm" class="btn btn-warning w-100">Limpar Formulário</button>
-  <br><br>
+  
+  
   <button id="exportExcel" class="btn btn-success w-100">Gerar Relatório (Excel)</button>
 </form>
 
@@ -263,20 +263,27 @@
 
     // inicial render
     render();
-  // Corrigir botão limpar formulário
-const btnClear = document.getElementById('clearForm');
-btnClear.addEventListener('click', () => {
-  document.getElementById('data').value = '';
-  document.getElementById('descricao').value = '';
-  document.getElementById('valor').value = '';
-});
+  
+// Gerar relatório Excel (corrigido)
+import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js').then(()=>{
+  document.getElementById('exportExcel').addEventListener('click',()=>{
+    const rows = Object.keys(transactions).map(id => {
+      const t = transactions[id];
+      return {
+        Data: t.date,
+        Descrição: t.desc,
+        Tipo: t.type === 'credit' ? 'Crédito' : 'Débito',
+        Valor: t.amount,
+        Conciliado: t.reconciled ? 'Sim' : 'Não'
+      };
+    });
 
-// Gerar relatório Excel
-import("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js").then(() => {
-  document.getElementById('exportExcel').addEventListener('click', () => {
-    const table = document.getElementById('tabelaTransacoes');
-    const wb = XLSX.utils.table_to_book(table, { sheet: "Relatório" });
-    XLSX.writeFile(wb, "relatorio_conciliacao.xlsx");
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Transações');
+    XLSX.writeFile(wb, 'relatorio_conciliacao.xlsx');
+  });
+});
   });
 });
 
