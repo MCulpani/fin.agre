@@ -96,13 +96,11 @@
   </div>
 
   <!-- Firebase v8 CDN (compatível, fácil de usar no front-end) -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, push, onValue, update, remove, child, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-  <script>
-    // ======= CONFIGURAÇÕES DO FIREBASE (substitua pelas suas) =======
-    // Crie um projeto no console.firebase.google.com → Realtime Database → Obtenha as credenciais
-    var firebaseConfig = {
+    const firebaseConfig = {
       apiKey: "AIzaSyCG_7wihJW2uI7pPgTR7bfQAKXYowQiyaA",
       authDomain: "conciliacao-caixa.firebaseapp.com",
       databaseURL: "https://conciliacao-caixa-default-rtdb.firebaseio.com",
@@ -112,8 +110,9 @@
       appId: "1:996496087548:web:75e98031e8e71dc09ffa79"
     };
 
-    // Inicializa
-    firebase.initializeApp(firebaseConfig);
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const txRef = ref(db, 'transactions');(firebaseConfig);
     var db = firebase.database();
 
     // Referência das transações
