@@ -138,6 +138,24 @@
       border:1px solid var(--border);
       color:var(--muted);
     }
+
+    /* Box de total pendente */
+    .pending-box{
+      margin-top:8px;
+      padding:8px 12px;
+      border-radius:10px;
+      background:#fef2f2;
+      border:1px solid #fecaca;
+      font-size:0.8rem;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px;
+    }
+    .pending-box strong{
+      font-size:0.95rem;
+    }
+
     .results{
       margin-top:10px;
       border-top:1px solid var(--border);
@@ -180,16 +198,24 @@
     tbody tr:nth-child(even){
       background:#f9fafb;
     }
-    .tag-ok{
-      color:#15803d;
-      font-weight:600;
+
+    /* Tags de status */
+    .tag-status{
       font-size:0.7rem;
+      font-weight:700;
+      padding:2px 8px;
+      border-radius:999px;
+      display:inline-block;
     }
-    .tag-diff{
-      color:#b45309;
-      font-weight:600;
-      font-size:0.7rem;
+    .tag-conc{
+      background:#dcfce7;
+      color:#166534;
     }
+    .tag-pend{
+      background:#fee2e2;
+      color:#b91c1c;
+    }
+
     .totals{
       font-size:0.75rem;
       color:var(--muted);
@@ -266,6 +292,12 @@
 
   <div id="statusGlobal" class="status-line"></div>
 
+  <!-- Campo visual de total pendente -->
+  <div id="resumoPendentes" class="pending-box" style="display:none;">
+    <span>Total pendente (minha planilha ainda não localizado no fornecedor):</span>
+    <strong id="valorTotalPendente">R$ 0,00</strong>
+  </div>
+
   <div class="results" id="results" style="display:none;">
     <!-- Conciliados -->
     <div class="results-section" id="secConciliados">
@@ -281,6 +313,7 @@
               <th>Documento</th>
               <th>Valor Minha Planilha</th>
               <th>Valor Fornecedor</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -310,10 +343,10 @@
       </div>
     </div>
 
-    <!-- Só na minha -->
+    <!-- Só na minha (pendentes) -->
     <div class="results-section" id="secSoMeus">
       <div class="results-header">
-        <h3>Somente na minha planilha</h3>
+        <h3>Pendências (somente na minha planilha)</h3>
         <span class="pill" id="countSoMeus">0 documentos</span>
       </div>
       <div class="totals" id="totSoMeus"></div>
@@ -323,6 +356,7 @@
             <tr>
               <th>Documento</th>
               <th>Valor Minha Planilha</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -457,7 +491,7 @@
       const headers = arr[0];
       meusDados = arr;
       preencherSelects(headers, selMeusDoc, selMeusValor);
-      statusMeus.textContent = `Planilha carregada com ${arr.length-1} linhas.`;
+      statusMeus.textContent = `Planilha carregada com ${arr.length-1} linhas.';
       statusMeus.className = 'status-line status-ok';
       atualizarEstadoBotao();
     }, ()=>{
@@ -506,10 +540,7 @@
     let s = String(v).trim();
     if(!s) return 0;
     // troca milhar/decimal estilo BR
-    // remove tudo que não for dígito, vírgula ou ponto
-    // tenta identificar se tem vírgula como decimal
     s = s.replace(/\s/g,'');
-
     const temVirgula = s.includes(',');
     const temPonto = s.includes('.');
 
@@ -581,6 +612,7 @@
       if(f){
         visitadosForn.add(doc);
         if(Math.abs(m.valor - f.valor) < 0.01){
+          // REGRA 1: valores batem -> CONCILIADO
           conciliados.push({doc:m.docBruto, valorM:m.valor, valorF:f.valor});
         }else{
           divergencias.push({
@@ -591,6 +623,7 @@
           });
         }
       } else {
+        // REGRA 2: documento da minha planilha não encontrado no fornecedor -> PENDENTE
         soMeus.push({doc:m.docBruto, valor:m.valor});
       }
     }
@@ -623,6 +656,7 @@
         <td>${item.doc}</td>
         <td>${formatarMoeda(item.valorM)}</td>
         <td>${formatarMoeda(item.valorF)}</td>
+        <td><span class="tag-status tag-conc">CONCILIADO</span></td>
       `;
       tbody.appendChild(tr);
       totalM += item.valorM;
@@ -668,6 +702,7 @@
       tr.innerHTML = `
         <td>${item.doc}</td>
         <td>${formatarMoeda(item.valor)}</td>
+        <td><span class="tag-status tag-pend">PENDENTE</span></td>
       `;
       tbody.appendChild(tr);
       total += item.valor;
@@ -676,7 +711,13 @@
     document.getElementById('countSoMeus').textContent =
       `${lista.length} documentos`;
     document.getElementById('totSoMeus').textContent =
-      `Total somente na minha planilha: ${formatarMoeda(total)}`;
+      `Total pendente (somente na minha planilha): ${formatarMoeda(total)}`;
+
+    // Atualiza box visual de total pendente
+    const resumoPendentes = document.getElementById('resumoPendentes');
+    const valorTotalPendente = document.getElementById('valorTotalPendente');
+    valorTotalPendente.textContent = formatarMoeda(total);
+    resumoPendentes.style.display = total > 0 ? 'flex' : 'none';
   }
 
   function preencherTabelaSoForn(lista){
