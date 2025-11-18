@@ -1,285 +1,259 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Conciliação de Caixa — MVP</title>
-  <style>
-    :root{--bg:#f6f8fb;--card:#fff;--accent:#2b6cb0;--muted:#6b7280}
-    body{font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg);margin:0;padding:24px;color:#111}
-    .wrap{max-width:980px;margin:0 auto}
-    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
-    h1{font-size:20px;margin:0}
-    .card{background:var(--card);padding:16px;border-radius:12px;box-shadow:0 6px 18px rgba(14,20,30,0.06);}
-    form{display:grid;grid-template-columns:1fr 1fr 120px 120px;gap:10px;align-items:end}
-    label{font-size:12px;color:var(--muted)}
-    input,select{padding:8px;border-radius:8px;border:1px solid #e6e9ef;width:100%;box-sizing:border-box}
-    button{padding:10px 14px;border-radius:10px;border:0;background:var(--accent);color:#fff;cursor:pointer}
-    .summary{display:flex;gap:12px;margin-top:12px}
-    .summary .item{flex:1;padding:12px;border-radius:10px;background:#fff;text-align:center}
-    table{width:100%;border-collapse:collapse;margin-top:12px}
-    th,td{padding:10px;border-bottom:1px solid #eef2f7;text-align:left}
-    .right{text-align:right}
-    .muted{color:var(--muted);font-size:13px}
-    .btn-ghost{background:transparent;border:1px solid #e2e8f0;color:#111;padding:6px 10px;border-radius:8px}
-    .reconciled{background:#edfff3;color:#065f46;padding:6px 8px;border-radius:8px;font-weight:600}
-    .actions button{margin-left:6px}
-    footer{margin-top:18px;color:var(--muted);font-size:13px}
-    #syncStatus{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px}
-    #syncStatus.ok{color:green}
-    #syncStatus.error{color:#b91c1c}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Roteirização — Calcular KM por rota (via planilha)</title>
+<link rel="icon" href="data:;base64,iVBORw0KGgo=">
+<style>
+  :root{--bg:#f6f8fb;--card:#fff;--accent:#0369a1;--muted:#556;--success:#15803d}
+  *{box-sizing:border-box}
+  body{font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg);margin:0;padding:20px;color:#0b2545}
+  .wrap{max-width:1000px;margin:0 auto}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  h1{font-size:20px;margin:0}
+  .card{background:var(--card);padding:16px;border-radius:12px;box-shadow:0 8px 24px rgba(12,20,36,0.06);margin-top:14px}
+  .grid{display:grid;grid-template-columns:1fr 280px;gap:16px}
+  label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+  input[type=file],select,input[type=text],button{width:100%;padding:8px;border-radius:8px;border:1px solid #e6eef6}
+  .small{font-size:13px;color:var(--muted);margin-top:6px}
+  #preview{max-height:260px;overflow:auto;margin-top:10px;border-radius:8px;border:1px solid #eef3f8}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{padding:8px;border-bottom:1px solid #eef3f8;text-align:left;font-size:13px}
+  .right{text-align:right}
+  .actions{display:flex;gap:8px;margin-top:10px}
+  .btn{background:var(--accent);color:white;border:0;padding:9px 12px;border-radius:8px;cursor:pointer}
+  .btn.secondary{background:#fff;color:var(--accent);border:1px solid #d1e8f6}
+  .muted{color:var(--muted)}
+  .ok{color:var(--success);font-weight:600}
+  .hint{font-size:12px;color:#7b8794}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <h1>Conciliação de Caixa — MVP</h1>
-      <div id="syncStatus">Sincronizando…</div>
-    </header>
+<div class="wrap">
+  <header>
+    <h1>Roteirização — calcular km a partir de planilha</h1>
+    <div class="muted">Formato: XLS/XLSX. Use colunas de latitude/longitude quando possível.</div>
+  </header>
 
-    <section class="card">
-      <form id="txForm">
-        <div>
-          <label for="date">Data</label>
-          <input id="date" type="date" required />
-        </div>
-        <div>
-          <label for="desc">Descrição</label>
-          <input id="desc" type="text" placeholder="Ex: Venda, pagamento" required />
-        </div>
-        <div>
-          <label for="type">Tipo</label>
-          <select id="type">
-            <option value="credit">Crédito</option>
-            <option value="debit">Débito</option>
-          </select>
-        </div>
-        <div>
-          <label for="amount">Valor (R$)</label>
-          <input id="amount" type="number" step="0.01" placeholder="0.00" required />
-        </div>
-        <div style="grid-column:1 / -1;display:flex;gap:8px;margin-top:6px">
-          <button id="addBtn" type="submit">Adicionar transação</button>
-          <button id="clearBtn" type="button" class="btn-ghost">Limpar formulário</button>
-          <button id="syncBtn" type="button" class="btn-ghost">Forçar sincronia</button>
-        </div>
-        <br>
-  <button id="clearForm" class="btn btn-warning w-100">Limpar Formulário</button>
-  <br><br>
-  <button id="exportExcel" class="btn btn-success w-100">Gerar Relatório (Excel)</button>
-</form>
+  <div class="card">
+    <div class="grid">
+      <div>
+        <label>Arquivo Excel (planilha com rota — primeira aba é usada)</label>
+        <input id="fileInput" type="file" accept=".xls,.xlsx" />
+        <div class="small">A planilha deve ter uma coluna com endereço ou colunas separadas de latitude e longitude.</div>
 
-      <div class="summary" id="summary">
-        <div class="item">
-          <div class="muted">Saldo Inicial</div>
-          <div id="initialBalance">R$ 0,00</div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <div style="flex:1">
+            <label>Coluna: Latitude (opcional)</label>
+            <select id="colLat"><option value="">-- selecionar --</option></select>
+          </div>
+          <div style="flex:1">
+            <label>Coluna: Longitude (opcional)</label>
+            <select id="colLon"><option value="">-- selecionar --</option></select>
+          </div>
         </div>
-        <div class="item">
-          <div class="muted">Entradas</div>
-          <div id="credits">R$ 0,00</div>
+
+        <label style="margin-top:8px">Ou: Coluna de endereço (street/address)</label>
+        <select id="colAddress"><option value="">-- selecionar --</option></select>
+        <div class="hint">Se você fornecer endereços (sem coordenadas), é possível geocodificar usando um provedor externo (Mapbox). Forneça API key abaixo para ativar (opcional).</div>
+
+        <label style="margin-top:8px">Mapbox Token (opcional — para geocoding)</label>
+        <input id="mapboxKey" type="text" placeholder="pk.... (Cole seu Mapbox public token)" />
+
+        <div class="actions">
+          <button id="btnParse" class="btn secondary">Carregar e detectar colunas</button>
+          <button id="btnCompute" class="btn" disabled>Calcular distâncias</button>
         </div>
-        <div class="item">
-          <div class="muted">Saídas</div>
-          <div id="debits">R$ 0,00</div>
+
+        <div class="actions" style="margin-top:8px">
+          <button id="btnExport" class="btn" disabled>Exportar relatórios (.xlsx)</button>
+          <button id="btnClear" class="btn secondary">Limpar tudo</button>
         </div>
-        <div class="item">
-          <div class="muted">Saldo Atual</div>
-          <div id="balance">R$ 0,00</div>
-        </div>
+
+        <div id="status" class="small" style="margin-top:8px"></div>
       </div>
 
-      <table id="txTable">
-        <thead>
-          <tr><th>Data</th><th>Descrição</th><th>Tipo</th><th class="right">Valor</th><th>Estado</th><th>Ações</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <div>
+        <div class="muted">Visualização rápida (primeiras linhas)</div>
+        <div id="preview"><table id="tblPreview"><thead></thead><tbody></tbody></table></div>
+        <div id="summary" class="small" style="margin-top:8px"></div>
+      </div>
+    </div>
 
-      <footer>
-        <div class="muted">Aviso: em produção configure regras de segurança no Firebase e adicione autenticação.</div>
-      </footer>
-    </section>
+    <div id="resultsArea" style="margin-top:16px;display:none">
+      <h3>Rota calculada</h3>
+      <div class="small">Distâncias entre pontos na ordem fornecida (rota sequencial). Total abaixo.</div>
+      <table id="tblResults"><thead><tr><th>#</th><th>Origem</th><th>Destino</th><th class="right">Distância (km)</th></tr></thead><tbody></tbody></table>
+      <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+        <div class="muted">Pontos processados: <span id="countPoints">0</span></div>
+        <div style="font-weight:700">Distância total: <span id="totalKm">0 km</span></div>
+      </div>
+    </div>
   </div>
+</div>
 
-  <!-- Firebase modular v12 -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-    import { getDatabase, ref, push, onValue, update, remove, get } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+<!-- SheetJS -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+// Estado
+let rawData = null; // matriz 2D
+let headers = [];
+let rows = []; // array de objetos
+let results = []; // distancias entre pares
 
-    // Config do seu projeto (fin-agre) — já com databaseURL
-    const firebaseConfig = {
-      apiKey: "AIzaSyAIZ-TJHzBgAVXQ1XuN6Z7CVvI93pSM-4Q",
-      authDomain: "fin-agre.firebaseapp.com",
-      projectId: "fin-agre",
-      storageBucket: "fin-agre.firebasestorage.app",
-      messagingSenderId: "841191455272",
-      appId: "1:841191455272:web:3779751e0a1c424a7bd31d",
-      measurementId: "G-513KYHHPMG",
-      databaseURL: "https://fin-agre-default-rtdb.firebaseio.com"
-    };
+const fileInput = document.getElementById('fileInput');
+const colLat = document.getElementById('colLat');
+const colLon = document.getElementById('colLon');
+const colAddress = document.getElementById('colAddress');
+const mapboxKey = document.getElementById('mapboxKey');
+const btnParse = document.getElementById('btnParse');
+const btnCompute = document.getElementById('btnCompute');
+const btnExport = document.getElementById('btnExport');
+const btnClear = document.getElementById('btnClear');
+const status = document.getElementById('status');
+const tblPreview = document.getElementById('tblPreview');
+const previewHead = tblPreview.querySelector('thead');
+const previewBody = tblPreview.querySelector('tbody');
+const resultsArea = document.getElementById('resultsArea');
+const tblResults = document.getElementById('tblResults').querySelector('tbody');
+const totalKmEl = document.getElementById('totalKm');
+const countPointsEl = document.getElementById('countPoints');
+const summary = document.getElementById('summary');
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const txRef = ref(db, 'transactions');
+function setStatus(text, ok){ status.textContent = text; status.style.color = ok ? 'green' : '#444'; }
 
-    // UI
-    const form = document.getElementById('txForm');
-    const tableBody = document.querySelector('#txTable tbody');
-    const creditsEl = document.getElementById('credits');
-    const debitsEl = document.getElementById('debits');
-    const balanceEl = document.getElementById('balance');
-    const initialBalanceEl = document.getElementById('initialBalance');
-    const syncStatusEl = document.getElementById('syncStatus');
-
-    // Estado
-    let transactions = {};
-    let initialBalance = 0.00;
-
-    function fmt(v){
-      return 'R$ ' + Number(v || 0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-    }
-
-    function escapeHtml(unsafe) {
-      return String(unsafe||'')
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/\"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    }
-
-    function setSync(status, msg){
-      syncStatusEl.classList.remove('ok','error');
-      if(status === 'ok'){
-        syncStatusEl.classList.add('ok');
-        syncStatusEl.textContent = '✔ Sincronizado';
-      } else if(status === 'error'){
-        syncStatusEl.classList.add('error');
-        syncStatusEl.textContent = 'Erro: ' + (msg||'');
-      } else {
-        syncStatusEl.textContent = 'Sincronizando…';
-      }
-    }
-
-    function render(){
-      tableBody.innerHTML = '';
-      let credits = 0, debits = 0;
-      const keys = Object.keys(transactions || {});
-      // Sort by date desc
-      keys.sort((a,b)=>{
-        const da = transactions[a] && transactions[a].date ? new Date(transactions[a].date) : new Date(0);
-        const dbd = transactions[b] && transactions[b].date ? new Date(transactions[b].date) : new Date(0);
-        return dbd - da;
-      });
-
-      keys.forEach(key=>{
-        const tx = transactions[key];
-        if(!tx) return;
-        const tr = document.createElement('tr');
-        tr.innerHTML = '<td>'+ (tx.date||'') +'</td>'+
-                       '<td>'+ escapeHtml(tx.desc) +'</td>'+
-                       '<td>'+(tx.type==='credit'?'Crédito':'Débito')+'</td>'+
-                       '<td class="right">'+ fmt(tx.amount) +'</td>'+
-                       '<td>'+(tx.reconciled?'<span class="reconciled">Conciliado</span>':'<span class="muted">Pendente</span>')+'</td>'+
-                       '<td class="actions">'
-                         +'<button class="btn-ghost" data-action="toggle" data-id="'+key+'">Toggle</button>'
-                         +'<button class="btn-ghost" data-action="delete" data-id="'+key+'">Excluir</button>'
-                       +'</td>';
-        tableBody.appendChild(tr);
-        if(tx.type==='credit') credits += Number(tx.amount||0);
-        else debits += Number(tx.amount||0);
-      });
-
-      creditsEl.textContent = fmt(credits);
-      debitsEl.textContent = fmt(debits);
-      balanceEl.textContent = fmt(initialBalance + credits - debits);
-      initialBalanceEl.textContent = fmt(initialBalance);
-    }
-
-    // Listen for changes
-    setSync('loading');
-    onValue(txRef, (snapshot)=>{
-      try{
-        setSync('loading');
-        const val = snapshot.val() || {};
-        if(val._initialBalance !== undefined) initialBalance = Number(val._initialBalance);
-        const copy = Object.assign({}, val);
-        delete copy._initialBalance;
-        transactions = copy;
-        render();
-        setSync('ok');
-      }catch(err){
-        console.error('Erro lendo DB:', err);
-        setSync('error', err.message);
-      }
-    }, (error)=>{
-      console.error('onValue error:', error);
-      setSync('error', error && error.message ? error.message : String(error));
-    });
-
-    // Form submit
-    form.addEventListener('submit', async function(e){
-      e.preventDefault();
-      const date = document.getElementById('date').value;
-      const desc = document.getElementById('desc').value.trim();
-      const type = document.getElementById('type').value;
-      const amount = parseFloat(document.getElementById('amount').value) || 0;
-      if(!date || !desc || amount===0){ alert('Preencha todos os campos corretamente.'); return; }
-      const payload = { date: date, desc: desc, type: type, amount: Number(amount), reconciled: false };
-      try{
-        setSync('loading');
-        await push(txRef, payload);
-        form.reset();
-        setSync('ok');
-      }catch(err){
-        console.error('Erro ao salvar:', err);
-        setSync('error', err && err.message ? err.message : String(err));
-        alert('Erro ao salvar: ' + (err && err.message ? err.message : String(err)));
-      }
-    });
-
-    document.getElementById('clearBtn').addEventListener('click', function(){ form.reset(); });
-    document.getElementById('syncBtn').addEventListener('click', function(){
-      setSync('loading');
-      get(txRef).then(s=>{
-        transactions = s.val() || {};
-        render();
-        setSync('ok');
-      }).catch(err=>{ setSync('error', err.message); console.error(err); });
-    });
-
-    // Table actions
-    tableBody.addEventListener('click', function(e){
-      const btn = e.target.closest('button'); if(!btn) return;
-      const action = btn.dataset.action, id = btn.dataset.id;
-      if(action === 'delete'){
-        if(!confirm('Excluir transação?')) return;
-        remove(ref(db, 'transactions/' + id)).catch(err=>{ setSync('error', err.message); console.error(err); alert('Erro: '+err.message); });
-      } else if(action === 'toggle'){
-        const cur = transactions[id]; if(!cur) return;
-        update(ref(db, 'transactions/' + id), { reconciled: !cur.reconciled }).catch(err=>{ setSync('error', err.message); console.error(err); alert('Erro: '+err.message); });
-      }
-    });
-
-    // inicial render
-    render();
-  // Corrigir botão limpar formulário
-const btnClear = document.getElementById('clearForm');
-btnClear.addEventListener('click', () => {
-  document.getElementById('data').value = '';
-  document.getElementById('descricao').value = '';
-  document.getElementById('valor').value = '';
+fileInput.addEventListener('change', ()=>{
+  rawData = null; headers = []; rows = []; results = [];
+  previewHead.innerHTML = ''; previewBody.innerHTML = ''; resultsArea.style.display='none';
+  btnCompute.disabled = true; btnExport.disabled = true;
+  setStatus('Arquivo selecionado. Clique em "Carregar e detectar colunas".', true);
 });
 
-// Gerar relatório Excel
-import("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js").then(() => {
-  document.getElementById('exportExcel').addEventListener('click', () => {
-    const table = document.getElementById('tabelaTransacoes');
-    const wb = XLSX.utils.table_to_book(table, { sheet: "Relatório" });
-    XLSX.writeFile(wb, "relatorio_conciliacao.xlsx");
-  });
+btnParse.addEventListener('click', ()=>{
+  const f = fileInput.files[0];
+  if(!f){ setStatus('Selecione um arquivo primeiro.', false); return; }
+  setStatus('Lendo arquivo...', true);
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const aoa = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+      if(!aoa || aoa.length<1){ setStatus('Planilha vazia', false); return; }
+      rawData = aoa;
+      headers = aoa[0].map(h=>h===null||h===undefined? '': String(h));
+      rows = aoa.slice(1).map(r=>{ const obj={}; for(let i=0;i<headers.length;i++) obj[headers[i]||('Col'+(i+1))]=r[i]; return obj; });
+      renderPreview();
+      populateSelects();
+      setStatus('Arquivo carregado — escolha colunas e clique em Calcular.', true);
+    }catch(err){ console.error(err); setStatus('Erro lendo arquivo: '+err.message, false); }
+  };
+  reader.readAsArrayBuffer(f);
 });
 
-</script>
-</body>
-</html>
+function renderPreview(){
+  previewHead.innerHTML = '<tr>' + headers.map(h=>`<th>${h||''}</th>`).join('') + '</tr>';
+  previewBody.innerHTML = '';
+  for(let i=0;i<Math.min(10, rawData.length-1); i++){
+    const r = rawData[i+1];
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td>'+ (r.map(c=>String(c)).join('</td><td>')) +'</td>';
+    previewBody.appendChild(tr);
+  }
+  summary.innerHTML = `<div class="muted">Linhas: ${rawData.length-1} · Colunas: ${headers.length}</div>`;
+}
+
+function populateSelects(){
+  const fill = (sel)=>{ sel.innerHTML=''; const opt=document.createElement('option'); opt.value=''; opt.textContent='-- selecionar --'; sel.appendChild(opt); headers.forEach((h,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=h||('Col '+(i+1)); sel.appendChild(o); }); };
+  fill(colLat); fill(colLon); fill(colAddress);
+}
+
+function haversineKm(lat1,lon1,lat2,lon2){
+  const toRad = v => v * Math.PI / 180;
+  const R = 6371; // km
+  const dLat = toRad(lat2-lat1);
+  const dLon = toRad(lon2-lon1);
+  const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)*Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+async function geocodeAddress(address){
+  const token = mapboxKey.value.trim();
+  if(!token) throw new Error('Mapbox token não fornecido');
+  const q = encodeURIComponent(address);
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${q}.json?limit=1&access_token=${token}`;
+  const resp = await fetch(url);
+  if(!resp.ok) throw new Error('Erro geocoding: '+resp.status);
+  const data = await resp.json();
+  if(data.features && data.features.length){
+    const c = data.features[0].center; // [lon, lat]
+    return {lat: c[1], lon: c[0]};
+  }
+  throw new Error('Endereço não encontrado: '+address);
+}
+
+btnCompute.addEventListener('click', async ()=>{
+  // Prepare points array with lat/lon
+  if(!rawData){ setStatus('Carregue e detecte colunas antes.', false); return; }
+  const latIdx = colLat.value !== '' ? Number(colLat.value) : null;
+  const lonIdx = colLon.value !== '' ? Number(colLon.value) : null;
+  const addrIdx = colAddress.value !== '' ? Number(colAddress.value) : null;
+  if(latIdx===null && addrIdx===null){ setStatus('Selecione colunas de lat/lon ou coluna de endereço.', false); return; }
+
+  setStatus('Processando pontos… (pode demorar se for preciso geocodificar)', true);
+  results = [];
+  const points = [];
+  // for each data row
+  for(let i=1;i<rawData.length;i++){
+    const row = rawData[i];
+    try{
+      if(latIdx!==null && lonIdx!==null){
+        const lat = parseFloat(String(row[latIdx]).replace(',','.'));
+        const lon = parseFloat(String(row[lonIdx]).replace(',','.'));
+        if(isNaN(lat) || isNaN(lon)) throw new Error('coord inválida');
+        points.push({label: row.map(c=>String(c)).join(' | '), lat, lon});
+      } else if(addrIdx!==null){
+        const addr = String(row[addrIdx]);
+        // geocode
+        try{
+          const g = await geocodeAddress(addr);
+          points.push({label: addr, lat: g.lat, lon: g.lon});
+        }catch(ge){
+          // mark as failed
+          points.push({label: addr, lat: null, lon: null, error: ge.message});
+        }
+      }
+    }catch(err){
+      points.push({label: row.map(c=>String(c)).join(' | '), lat:null, lon:null, error: 'Coords inválidas'});
+    }
+  }
+
+  // compute sequential distances
+  let total = 0;
+  tblResults.innerHTML = '';
+  for(let i=0;i<points.length-1;i++){
+    const a = points[i];
+    const b = points[i+1];
+    let dist = null;
+    if(a.lat==null || b.lat==null){ dist = null; }
+    else{ dist = haversineKm(a.lat,a.lon,b.lat,b.lon); total += dist; }
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i+1}</td><td title="${a.label}">${truncate(a.label,60)}</td><td title="${b.label}">${truncate(b.label,60)}</td><td class="right">${dist===null?'-':dist.toFixed(3)}</td>`;
+    tblResults.appendChild(tr);
+  }
+
+  document.getElementById('countPoints').textContent = points.length;
+  document.getElementById('totalKm').textContent = total.toFixed(3) + ' km';
+  results = {points, total};
+  resultsArea.style.display = 'block';
+  btnExport.disabled = false;
+  setStatus('Rota calculada.', true);
+});
+
+btnExport.addEventListener('click', ()=>{
+  if(!results || !results.points) return alert('Gere a rota antes de exportar.');
+  const rowsOut = [];
+  for
