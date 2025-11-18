@@ -1,259 +1,116 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Roteirização — Calcular KM por rota (via planilha)</title>
-<link rel="icon" href="data:;base64,iVBORw0KGgo=">
-<style>
-  :root{--bg:#f6f8fb;--card:#fff;--accent:#0369a1;--muted:#556;--success:#15803d}
-  *{box-sizing:border-box}
-  body{font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg);margin:0;padding:20px;color:#0b2545}
-  .wrap{max-width:1000px;margin:0 auto}
-  header{display:flex;align-items:center;justify-content:space-between;gap:12px}
-  h1{font-size:20px;margin:0}
-  .card{background:var(--card);padding:16px;border-radius:12px;box-shadow:0 8px 24px rgba(12,20,36,0.06);margin-top:14px}
-  .grid{display:grid;grid-template-columns:1fr 280px;gap:16px}
-  label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
-  input[type=file],select,input[type=text],button{width:100%;padding:8px;border-radius:8px;border:1px solid #e6eef6}
-  .small{font-size:13px;color:var(--muted);margin-top:6px}
-  #preview{max-height:260px;overflow:auto;margin-top:10px;border-radius:8px;border:1px solid #eef3f8}
-  table{width:100%;border-collapse:collapse;margin-top:10px}
-  th,td{padding:8px;border-bottom:1px solid #eef3f8;text-align:left;font-size:13px}
-  .right{text-align:right}
-  .actions{display:flex;gap:8px;margin-top:10px}
-  .btn{background:var(--accent);color:white;border:0;padding:9px 12px;border-radius:8px;cursor:pointer}
-  .btn.secondary{background:#fff;color:var(--accent);border:1px solid #d1e8f6}
-  .muted{color:var(--muted)}
-  .ok{color:var(--success);font-weight:600}
-  .hint{font-size:12px;color:#7b8794}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Roteirização Automática — Cálculo de Distâncias</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    body{font-family:Arial;background:#f3f4f6;margin:0;padding:20px;}
+    h1{margin-bottom:20px;}
+    .card{background:white;padding:20px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,0.1);} 
+    input{padding:8px;width:100%;margin-bottom:12px;} 
+    button{padding:10px 15px;border:0;border-radius:6px;cursor:pointer;margin-right:6px;} 
+    .btn{background:#2563eb;color:white;} 
+    .btn-secondary{background:#e5e7eb;color:#111;} 
+    table{width:100%;margin-top:20px;border-collapse:collapse;background:white;} 
+    th,td{padding:10px;border-bottom:1px solid #ddd;} 
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>Roteirização — calcular km a partir de planilha</h1>
-    <div class="muted">Formato: XLS/XLSX. Use colunas de latitude/longitude quando possível.</div>
-  </header>
+  <h1>Roteirização Automática via Google Distance Matrix</h1>
 
   <div class="card">
-    <div class="grid">
-      <div>
-        <label>Arquivo Excel (planilha com rota — primeira aba é usada)</label>
-        <input id="fileInput" type="file" accept=".xls,.xlsx" />
-        <div class="small">A planilha deve ter uma coluna com endereço ou colunas separadas de latitude e longitude.</div>
+    <label>Sua Google API Key</label>
+    <input id="apikey" placeholder="Cole aqui sua Google API Key" />
 
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <div style="flex:1">
-            <label>Coluna: Latitude (opcional)</label>
-            <select id="colLat"><option value="">-- selecionar --</option></select>
-          </div>
-          <div style="flex:1">
-            <label>Coluna: Longitude (opcional)</label>
-            <select id="colLon"><option value="">-- selecionar --</option></select>
-          </div>
-        </div>
+    <label>Importar planilha Excel (com coluna ORIGEM e DESTINO)</label>
+    <input type="file" id="fileInput" accept=".xlsx,.xls" />
 
-        <label style="margin-top:8px">Ou: Coluna de endereço (street/address)</label>
-        <select id="colAddress"><option value="">-- selecionar --</option></select>
-        <div class="hint">Se você fornecer endereços (sem coordenadas), é possível geocodificar usando um provedor externo (Mapbox). Forneça API key abaixo para ativar (opcional).</div>
+    <button class="btn" onclick="processarPlanilha()">Gerar Distâncias</button>
+    <button class="btn-secondary" onclick="limpar()">Limpar Tudo</button>
 
-        <label style="margin-top:8px">Mapbox Token (opcional — para geocoding)</label>
-        <input id="mapboxKey" type="text" placeholder="pk.... (Cole seu Mapbox public token)" />
+    <table id="resultado" style="display:none;">
+      <thead>
+        <tr>
+          <th>Origem</th><th>Destino</th><th>Distância (km)</th><th>Duração</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
 
-        <div class="actions">
-          <button id="btnParse" class="btn secondary">Carregar e detectar colunas</button>
-          <button id="btnCompute" class="btn" disabled>Calcular distâncias</button>
-        </div>
-
-        <div class="actions" style="margin-top:8px">
-          <button id="btnExport" class="btn" disabled>Exportar relatórios (.xlsx)</button>
-          <button id="btnClear" class="btn secondary">Limpar tudo</button>
-        </div>
-
-        <div id="status" class="small" style="margin-top:8px"></div>
-      </div>
-
-      <div>
-        <div class="muted">Visualização rápida (primeiras linhas)</div>
-        <div id="preview"><table id="tblPreview"><thead></thead><tbody></tbody></table></div>
-        <div id="summary" class="small" style="margin-top:8px"></div>
-      </div>
-    </div>
-
-    <div id="resultsArea" style="margin-top:16px;display:none">
-      <h3>Rota calculada</h3>
-      <div class="small">Distâncias entre pontos na ordem fornecida (rota sequencial). Total abaixo.</div>
-      <table id="tblResults"><thead><tr><th>#</th><th>Origem</th><th>Destino</th><th class="right">Distância (km)</th></tr></thead><tbody></tbody></table>
-      <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
-        <div class="muted">Pontos processados: <span id="countPoints">0</span></div>
-        <div style="font-weight:700">Distância total: <span id="totalKm">0 km</span></div>
-      </div>
-    </div>
+    <button id="exportar" class="btn" style="display:none;" onclick="exportarExcel()">Exportar Excel</button>
   </div>
-</div>
 
-<!-- SheetJS -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
-// Estado
-let rawData = null; // matriz 2D
-let headers = [];
-let rows = []; // array de objetos
-let results = []; // distancias entre pares
+let dadosRotas = [];
 
-const fileInput = document.getElementById('fileInput');
-const colLat = document.getElementById('colLat');
-const colLon = document.getElementById('colLon');
-const colAddress = document.getElementById('colAddress');
-const mapboxKey = document.getElementById('mapboxKey');
-const btnParse = document.getElementById('btnParse');
-const btnCompute = document.getElementById('btnCompute');
-const btnExport = document.getElementById('btnExport');
-const btnClear = document.getElementById('btnClear');
-const status = document.getElementById('status');
-const tblPreview = document.getElementById('tblPreview');
-const previewHead = tblPreview.querySelector('thead');
-const previewBody = tblPreview.querySelector('tbody');
-const resultsArea = document.getElementById('resultsArea');
-const tblResults = document.getElementById('tblResults').querySelector('tbody');
-const totalKmEl = document.getElementById('totalKm');
-const countPointsEl = document.getElementById('countPoints');
-const summary = document.getElementById('summary');
-
-function setStatus(text, ok){ status.textContent = text; status.style.color = ok ? 'green' : '#444'; }
-
-fileInput.addEventListener('change', ()=>{
-  rawData = null; headers = []; rows = []; results = [];
-  previewHead.innerHTML = ''; previewBody.innerHTML = ''; resultsArea.style.display='none';
-  btnCompute.disabled = true; btnExport.disabled = true;
-  setStatus('Arquivo selecionado. Clique em "Carregar e detectar colunas".', true);
-});
-
-btnParse.addEventListener('click', ()=>{
-  const f = fileInput.files[0];
-  if(!f){ setStatus('Selecione um arquivo primeiro.', false); return; }
-  setStatus('Lendo arquivo...', true);
-  const reader = new FileReader();
-  reader.onload = function(e){
-    try{
-      const data = new Uint8Array(e.target.result);
-      const wb = XLSX.read(data, {type:'array'});
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      const aoa = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
-      if(!aoa || aoa.length<1){ setStatus('Planilha vazia', false); return; }
-      rawData = aoa;
-      headers = aoa[0].map(h=>h===null||h===undefined? '': String(h));
-      rows = aoa.slice(1).map(r=>{ const obj={}; for(let i=0;i<headers.length;i++) obj[headers[i]||('Col'+(i+1))]=r[i]; return obj; });
-      renderPreview();
-      populateSelects();
-      setStatus('Arquivo carregado — escolha colunas e clique em Calcular.', true);
-    }catch(err){ console.error(err); setStatus('Erro lendo arquivo: '+err.message, false); }
-  };
-  reader.readAsArrayBuffer(f);
-});
-
-function renderPreview(){
-  previewHead.innerHTML = '<tr>' + headers.map(h=>`<th>${h||''}</th>`).join('') + '</tr>';
-  previewBody.innerHTML = '';
-  for(let i=0;i<Math.min(10, rawData.length-1); i++){
-    const r = rawData[i+1];
-    const tr = document.createElement('tr');
-    tr.innerHTML = '<td>'+ (r.map(c=>String(c)).join('</td><td>')) +'</td>';
-    previewBody.appendChild(tr);
-  }
-  summary.innerHTML = `<div class="muted">Linhas: ${rawData.length-1} · Colunas: ${headers.length}</div>`;
+function limpar(){
+  dadosRotas = [];
+  document.querySelector('#resultado').style.display='none';
+  document.querySelector('#resultado tbody').innerHTML='';
+  document.querySelector('#exportar').style.display='none';
 }
 
-function populateSelects(){
-  const fill = (sel)=>{ sel.innerHTML=''; const opt=document.createElement('option'); opt.value=''; opt.textContent='-- selecionar --'; sel.appendChild(opt); headers.forEach((h,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=h||('Col '+(i+1)); sel.appendChild(o); }); };
-  fill(colLat); fill(colLon); fill(colAddress);
-}
-
-function haversineKm(lat1,lon1,lat2,lon2){
-  const toRad = v => v * Math.PI / 180;
-  const R = 6371; // km
-  const dLat = toRad(lat2-lat1);
-  const dLon = toRad(lon2-lon1);
-  const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)*Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
-}
-
-async function geocodeAddress(address){
-  const token = mapboxKey.value.trim();
-  if(!token) throw new Error('Mapbox token não fornecido');
-  const q = encodeURIComponent(address);
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${q}.json?limit=1&access_token=${token}`;
+async function buscarDistancia(origem, destino, apiKey){
+  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origem)}&destinations=${encodeURIComponent(destino)}&key=${apiKey}&mode=driving`;
   const resp = await fetch(url);
-  if(!resp.ok) throw new Error('Erro geocoding: '+resp.status);
   const data = await resp.json();
-  if(data.features && data.features.length){
-    const c = data.features[0].center; // [lon, lat]
-    return {lat: c[1], lon: c[0]};
+
+  if(data.rows && data.rows[0].elements[0].status === "OK"){
+    return {
+      distancia: data.rows[0].elements[0].distance.text,
+      duracao: data.rows[0].elements[0].duration.text
+    };
   }
-  throw new Error('Endereço não encontrado: '+address);
+  return { distancia:"Erro", duracao:"Erro" };
 }
 
-btnCompute.addEventListener('click', async ()=>{
-  // Prepare points array with lat/lon
-  if(!rawData){ setStatus('Carregue e detecte colunas antes.', false); return; }
-  const latIdx = colLat.value !== '' ? Number(colLat.value) : null;
-  const lonIdx = colLon.value !== '' ? Number(colLon.value) : null;
-  const addrIdx = colAddress.value !== '' ? Number(colAddress.value) : null;
-  if(latIdx===null && addrIdx===null){ setStatus('Selecione colunas de lat/lon ou coluna de endereço.', false); return; }
+function processarPlanilha(){
+  const file = document.getElementById('fileInput').files[0];
+  const apiKey = document.getElementById('apikey').value.trim();
+  if(!file) return alert("Selecione uma planilha.");
+  if(!apiKey) return alert("Insira sua Google API Key.");
 
-  setStatus('Processando pontos… (pode demorar se for preciso geocodificar)', true);
-  results = [];
-  const points = [];
-  // for each data row
-  for(let i=1;i<rawData.length;i++){
-    const row = rawData[i];
-    try{
-      if(latIdx!==null && lonIdx!==null){
-        const lat = parseFloat(String(row[latIdx]).replace(',','.'));
-        const lon = parseFloat(String(row[lonIdx]).replace(',','.'));
-        if(isNaN(lat) || isNaN(lon)) throw new Error('coord inválida');
-        points.push({label: row.map(c=>String(c)).join(' | '), lat, lon});
-      } else if(addrIdx!==null){
-        const addr = String(row[addrIdx]);
-        // geocode
-        try{
-          const g = await geocodeAddress(addr);
-          points.push({label: addr, lat: g.lat, lon: g.lon});
-        }catch(ge){
-          // mark as failed
-          points.push({label: addr, lat: null, lon: null, error: ge.message});
-        }
-      }
-    }catch(err){
-      points.push({label: row.map(c=>String(c)).join(' | '), lat:null, lon:null, error: 'Coords inválidas'});
+  const reader = new FileReader();
+
+  reader.onload = async (e)=>{
+    const data = new Uint8Array(e.target.result);
+    const wb = XLSX.read(data,{type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(ws);
+
+    dadosRotas = [];
+    document.querySelector('#resultado tbody').innerHTML = '';
+
+    for(const linha of json){
+      const origem = linha.ORIGEM;
+      const destino = linha.DESTINO;
+      if(!origem || !destino) continue;
+
+      const r = await buscarDistancia(origem, destino, apiKey);
+
+      dadosRotas.push({ origem, destino, distancia:r.distancia, duracao:r.duracao });
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${origem}</td><td>${destino}</td><td>${r.distancia}</td><td>${r.duracao}</td>`;
+      document.querySelector('#resultado tbody').appendChild(tr);
     }
-  }
 
-  // compute sequential distances
-  let total = 0;
-  tblResults.innerHTML = '';
-  for(let i=0;i<points.length-1;i++){
-    const a = points[i];
-    const b = points[i+1];
-    let dist = null;
-    if(a.lat==null || b.lat==null){ dist = null; }
-    else{ dist = haversineKm(a.lat,a.lon,b.lat,b.lon); total += dist; }
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${i+1}</td><td title="${a.label}">${truncate(a.label,60)}</td><td title="${b.label}">${truncate(b.label,60)}</td><td class="right">${dist===null?'-':dist.toFixed(3)}</td>`;
-    tblResults.appendChild(tr);
-  }
+    document.querySelector('#resultado').style.display='table';
+    document.querySelector('#exportar').style.display='inline-block';
+  };
 
-  document.getElementById('countPoints').textContent = points.length;
-  document.getElementById('totalKm').textContent = total.toFixed(3) + ' km';
-  results = {points, total};
-  resultsArea.style.display = 'block';
-  btnExport.disabled = false;
-  setStatus('Rota calculada.', true);
-});
+  reader.readAsArrayBuffer(file);
+}
 
-btnExport.addEventListener('click', ()=>{
-  if(!results || !results.points) return alert('Gere a rota antes de exportar.');
-  const rowsOut = [];
-  for
+function exportarExcel(){
+  const ws = XLSX.utils.json_to_sheet(dadosRotas);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Rotas');
+  XLSX.writeFile(wb, 'resultado_rotas.xlsx');
+}
+</script>
+
+</body>
+</html>
