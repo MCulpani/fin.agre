@@ -194,20 +194,11 @@
       background:#f9fafb;
     }
 
-    /* Linha de grupo nas tabelas (colapsável) */
+    /* Linha de grupo nas tabelas */
     .group-row td{
       background:#e5e7eb;
       font-weight:600;
       font-size:0.75rem;
-      cursor:pointer;
-    }
-    .group-arrow{
-      display:inline-block;
-      width:1em;
-      margin-right:4px;
-    }
-    .group-name{
-      font-weight:600;
     }
 
     /* Tags de status */
@@ -290,7 +281,7 @@
         <select id="meusGrupoCol">
           <option value="">(opcional)</option>
         </select>
-        <div class="small-text">Será usado para agrupar pendências e subdividir as tabelas por grupo.</div>
+        <div class="small-text">Será usado para agrupar os <strong>pendentes</strong> e também subdividir as tabelas por grupo.</div>
       </div>
 
       <div id="statusMeus" class="status-line"></div>
@@ -355,7 +346,7 @@
         <table id="tblConciliados">
           <thead>
             <tr>
-              <th>Origem / Grupo</th>
+              <th>Documento</th>
               <th>Valor Minha Planilha</th>
               <th>Valor Fornecedor</th>
               <th>Status</th>
@@ -377,7 +368,7 @@
         <table id="tblDivergencias">
           <thead>
             <tr>
-              <th>Origem / Grupo</th>
+              <th>Documento</th>
               <th>Valor Minha Planilha</th>
               <th>Valor Fornecedor</th>
               <th>Diferença</th>
@@ -399,9 +390,9 @@
         <table id="tblSoMeus">
           <thead>
             <tr>
-              <th>Origem / Grupo ou Documento</th>
+              <th>Documento</th>
               <th>Valor Minha Planilha</th>
-              <th>Info</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -437,7 +428,7 @@
         const workbook = XLSX.read(data, {type:'array'});
         const primeiraAba = workbook.SheetNames[0];
         const sheet = workbook.Sheets[primeiraAba];
-        const arr = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+        const arr = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''}); // matriz [lin][col]
         callbackOk(arr);
       }catch(err){
         console.error(err);
@@ -451,6 +442,7 @@
     reader.readAsArrayBuffer(file);
   }
 
+  // Preenche selects da MINHA planilha (doc + valor1 + valor2 + grupo)
   function preencherSelectsMeus(headers){
     selMeusDoc.innerHTML = '';
     selMeusValor.innerHTML = '';
@@ -505,6 +497,7 @@
     autoSelecionarColuna(headers, selMeusValor, ['valor','vl','vr','amount']);
   }
 
+  // Preenche selects do FORNECEDOR (doc + valor)
   function preencherSelectsForn(headers){
     selFornDoc.innerHTML = '';
     selFornValor.innerHTML = '';
@@ -627,8 +620,10 @@
     const temPonto = s.includes('.');
 
     if(temVirgula && temPonto){
+      // assume formato 1.234,56
       s = s.replace(/\./g,'').replace(',', '.');
     } else if(temVirgula && !temPonto){
+      // assume 1234,56
       s = s.replace(',', '.');
     }
     const n = parseFloat(s.replace(/[^0-9.-]/g,''));
@@ -663,6 +658,7 @@
     const mapMeus = {};
     const mapForn = {};
 
+    // Minha planilha: valor = valor1 (+ valor2 se selecionado) e grupo opcional
     for(let i=1;i<meusDados.length;i++){
       const row = meusDados[i];
       const docBruto = row[idxMeusDoc];
@@ -682,6 +678,7 @@
       mapMeus[doc] = {docBruto, valor, grupo};
     }
 
+    // Fornecedor: valor simples
     for(let i=1;i<fornDados.length;i++){
       const row = fornDados[i];
       const docBruto = row[idxFornDoc];
@@ -703,17 +700,18 @@
       if(f){
         visitadosForn.add(doc);
         if(Math.abs(m.valor - f.valor) < 0.01){
+          // REGRA 1: valores batem -> CONCILIADO
           conciliados.push({doc:m.docBruto, valorM:m.valor, valorF:f.valor, grupo:m.grupo});
         }else{
           divergencias.push({
             doc:m.docBruto,
             valorM:m.valor,
             valorF:f.valor,
-            diff:m.valor - f.valor,
-            grupo:m.grupo
+            diff:m.valor - f.valor
           });
         }
       } else {
+        // REGRA 2: documento da minha planilha não encontrado no fornecedor -> PENDENTE
         soMeus.push({doc:m.docBruto, valor:m.valor, grupo:m.grupo});
       }
     }
@@ -722,6 +720,7 @@
     preencherTabelaDivergencias(divergencias);
     preencherTabelaSoMeus(soMeus);
 
+    // Resumo por grupo (apenas pendentes)
     const headersMeus = meusDados[0] || [];
     const nomeColGrupo = (idxMeusGrupo !== null && !isNaN(idxMeusGrupo)) ? (headersMeus[idxMeusGrupo] || '').toString().trim() : '';
     preencherResumoGrupos(soMeus, nomeColGrupo);
@@ -731,73 +730,37 @@
     document.getElementById('results').style.display = 'block';
   });
 
-  // Colapsar/expandir grupos
-  function configurarColapsarPorGrupo(tableId){
-    const tabela = document.getElementById(tableId);
-    if(!tabela) return;
-    const headers = tabela.querySelectorAll('tr.group-row');
-    headers.forEach(header=>{
-      header.addEventListener('click', ()=>{
-        const groupId = header.dataset.groupId;
-        const expanded = header.dataset.expanded === 'true';
-        const linhas = tabela.querySelectorAll('tr.group-item[data-group-id="' + groupId + '"]');
-        linhas.forEach(l=>{
-          l.style.display = expanded ? 'none' : '';
-        });
-        header.dataset.expanded = expanded ? 'false' : 'true';
-        const arrow = header.querySelector('.group-arrow');
-        if(arrow){
-          arrow.textContent = expanded ? '▶' : '▼';
-        }
-      });
-    });
-  }
-
   function preencherTabelaConciliados(lista){
     const tbody = document.querySelector('#tblConciliados tbody');
     tbody.innerHTML = '';
     let totalM = 0, totalF = 0;
 
+    // calcula totais gerais
     lista.forEach(item=>{
       totalM += item.valorM;
       totalF += item.valorF;
     });
 
+    // Agrupamento por grupo, se houver
     const existeGrupo = lista.some(it => it.grupo && it.grupo.toString().trim() !== '');
     if(existeGrupo){
       const gruposMap = {};
       lista.forEach(item=>{
         const gRaw = (item.grupo || '').toString().trim();
         const g = gRaw || '[Sem grupo]';
-        if(!gruposMap[g]) gruposMap[g] = {itens:[], totalM:0, totalF:0};
-        gruposMap[g].itens.push(item);
-        gruposMap[g].totalM += item.valorM;
-        gruposMap[g].totalF += item.valorF;
+        if(!gruposMap[g]) gruposMap[g] = [];
+        gruposMap[g].push(item);
       });
 
       const grupos = Object.keys(gruposMap).sort();
-      let idx = 0;
       grupos.forEach(g=>{
-        const groupId = 'conc_' + (idx++);
-        const info = gruposMap[g];
-
         const trGrupo = document.createElement('tr');
         trGrupo.className = 'group-row';
-        trGrupo.dataset.groupId = groupId;
-        trGrupo.dataset.expanded = 'false';
-        trGrupo.innerHTML = `
-          <td><span class="group-arrow">▶</span><span class="group-name">${g}</span></td>
-          <td>${formatarMoeda(info.totalM)}</td>
-          <td>${formatarMoeda(info.totalF)}</td>
-          <td></td>
-        `;
+        trGrupo.innerHTML = `<td colspan="4">${g}</td>`;
         tbody.appendChild(trGrupo);
 
-        info.itens.forEach(item=>{
+        gruposMap[g].forEach(item=>{
           const tr = document.createElement('tr');
-          tr.className = 'group-item';
-          tr.dataset.groupId = groupId;
-          tr.style.display = 'none';
           tr.innerHTML = `
             <td>${item.doc}</td>
             <td>${formatarMoeda(item.valorM)}</td>
@@ -808,6 +771,7 @@
         });
       });
     } else {
+      // sem grupo, tabela simples
       lista.forEach(item=>{
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -824,8 +788,6 @@
       `${lista.length} documentos`;
     document.getElementById('totConciliados').textContent =
       `Total minha planilha: ${formatarMoeda(totalM)} · Total fornecedor: ${formatarMoeda(totalF)}`;
-
-    configurarColapsarPorGrupo('tblConciliados');
   }
 
   function preencherTabelaDivergencias(lista){
@@ -834,9 +796,32 @@
     let totalDiff = 0;
 
     lista.forEach(item=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${item.doc}</td>
+        <td>${formatarMoeda(item.valorM)}</td>
+        <td>${formatarMoeda(item.valorF)}</td>
+        <td>${formatarMoeda(item.diff)}</td>
+      `;
+      tbody.appendChild(tr);
       totalDiff += item.diff;
     });
 
+    document.getElementById('countDivergencias').textContent =
+      `${lista.length} documentos`;
+    document.getElementById('totDivergencias').textContent =
+      `Somatório das diferenças: ${formatarMoeda(totalDiff)}`;
+  }
+
+  function preencherTabelaSoMeus(lista){
+    const tbody = document.querySelector('#tblSoMeus tbody');
+    tbody.innerHTML = '';
+    let total = 0;
+
+    // soma total geral
+    lista.forEach(item => total += item.valor);
+
+    // Agrupamento por grupo, se houver
     const existeGrupo = lista.some(it => it.grupo && it.grupo.toString().trim() !== '');
     if(existeGrupo){
       const gruposMap = {};
@@ -848,87 +833,24 @@
       });
 
       const grupos = Object.keys(gruposMap).sort();
-      let idx = 0;
       grupos.forEach(g=>{
-        const groupId = 'div_' + (idx++);
         const trGrupo = document.createElement('tr');
         trGrupo.className = 'group-row';
-        trGrupo.dataset.groupId = groupId;
-        trGrupo.dataset.expanded = 'false';
-        trGrupo.innerHTML = `
-          <td><span class="group-arrow">▶</span><span class="group-name">${g}</span></td>
-          <td></td>
-          <td></td>
-          <td></td>
-        `;
+        trGrupo.innerHTML = `<td colspan="3">${g}</td>`;
         tbody.appendChild(trGrupo);
 
         gruposMap[g].forEach(item=>{
           const tr = document.createElement('tr');
-          tr.className = 'group-item';
-          tr.dataset.groupId = groupId;
-          tr.style.display = 'none';
           tr.innerHTML = `
             <td>${item.doc}</td>
-            <td>${formatarMoeda(item.valorM)}</td>
-            <td>${formatarMoeda(item.valorF)}</td>
-            <td>${formatarMoeda(item.diff)}</td>
+            <td>${formatarMoeda(item.valor)}</td>
+            <td><span class="tag-status tag-pend">PENDENTE</span></td>
           `;
           tbody.appendChild(tr);
         });
       });
     } else {
-      lista.forEach(item=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${item.doc}</td>
-          <td>${formatarMoeda(item.valorM)}</td>
-          <td>${formatarMoeda(item.valorF)}</td>
-          <td>${formatarMoeda(item.diff)}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    document.getElementById('countDivergencias').textContent =
-      `${lista.length} documentos`;
-    document.getElementById('totDivergencias').textContent =
-      `Somatório das diferenças: ${formatarMoeda(totalDiff)}`;
-
-    configurarColapsarPorGrupo('tblDivergencias');
-  }
-
-  function preencherTabelaSoMeus(lista){
-    const tbody = document.querySelector('#tblSoMeus tbody');
-    tbody.innerHTML = '';
-    let total = 0;
-    lista.forEach(item => total += item.valor);
-
-    const existeGrupo = lista.some(it => it.grupo && it.grupo.toString().trim() !== '');
-    if(existeGrupo){
-      // Mostra só totais por grupo (sem abrir detalhes)
-      const gruposMap = {};
-      lista.forEach(item=>{
-        const gRaw = (item.grupo || '').toString().trim();
-        const g = gRaw || '[Sem grupo]';
-        if(!gruposMap[g]) gruposMap[g] = {total:0, qtd:0};
-        gruposMap[g].total += item.valor;
-        gruposMap[g].qtd += 1;
-      });
-
-      const grupos = Object.keys(gruposMap).sort();
-      grupos.forEach(g=>{
-        const info = gruposMap[g];
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${g}</td>
-          <td>${formatarMoeda(info.total)}</td>
-          <td>${info.qtd} título(s) pendente(s)</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    } else {
-      // Sem coluna de grupo: lista documento a documento
+      // sem grupo, tabela simples
       lista.forEach(item=>{
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -945,6 +867,7 @@
     document.getElementById('totSoMeus').textContent =
       `Total pendente (somente na minha planilha): ${formatarMoeda(total)}`;
 
+    // Atualiza box visual de total pendente
     const resumoPendentes = document.getElementById('resumoPendentes');
     const valorTotalPendente = document.getElementById('valorTotalPendente');
     valorTotalPendente.textContent = formatarMoeda(total);
