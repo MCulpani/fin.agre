@@ -1,910 +1,285 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Conciliação de Caixa - Planilha x Fornecedor</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- SheetJS para ler XLS/XLSX -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Conciliação de Caixa — MVP</title>
   <style>
-    :root {
-      --bg:#0f172a;
-      --card:#ffffff;
-      --accent:#0ea5e9;
-      --accent2:#22c55e;
-      --danger:#ef4444;
-      --muted:#64748b;
-      --border:#e5e7eb;
-      --text:#0f172a;
-    }
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top, #0ea5e9 0, #0f172a 55%);
-      min-height:100vh;
-      padding:16px;
-      color:var(--text);
-      display:flex;
-      justify-content:center;
-      align-items:flex-start;
-    }
-    .app {
-      width:100%;
-      max-width:1200px;
-      background:var(--card);
-      border-radius:16px;
-      padding:20px;
-      box-shadow:0 20px 40px rgba(15,23,42,0.5);
-    }
-    header{
-      display:flex;
-      flex-wrap:wrap;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom:16px;
-      align-items:center;
-    }
-    header h1{
-      font-size:1.3rem;
-      font-weight:700;
-    }
-    header p{
-      font-size:0.85rem;
-      color:var(--muted);
-    }
-    .badge {
-      font-size:0.75rem;
-      background:#e0f2fe;
-      color:#0369a1;
-      padding:4px 10px;
-      border-radius:999px;
-      font-weight:600;
-    }
-    .grid{
-      display:grid;
-      grid-template-columns:repeat(2,minmax(0,1fr));
-      gap:16px;
-      margin-bottom:16px;
-    }
-    @media (max-width:900px){
-      .grid{grid-template-columns:1fr;}
-    }
-    .card{
-      border:1px solid var(--border);
-      border-radius:12px;
-      padding:12px 12px 10px;
-      background:#f9fafb;
-    }
-    .card h2{
-      font-size:0.95rem;
-      margin-bottom:6px;
-    }
-    .label{
-      font-size:0.75rem;
-      font-weight:600;
-      color:var(--muted);
-      margin-bottom:4px;
-      display:block;
-    }
-    input[type="file"], select {
-      width:100%;
-      font-size:0.8rem;
-      padding:6px 8px;
-      border-radius:8px;
-      border:1px solid var(--border);
-      background:white;
-    }
-    .small-text{
-      font-size:0.7rem;
-      color:var(--muted);
-      margin-top:4px;
-    }
-    .status-line{
-      font-size:0.75rem;
-      color:var(--muted);
-      margin-top:4px;
-    }
-    .status-ok{color:var(--accent2);}
-    .status-err{color:var(--danger);}
-    .btn-row{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      margin:6px 0 4px;
-      flex-wrap:wrap;
-    }
-    button{
-      border:none;
-      border-radius:999px;
-      padding:7px 16px;
-      font-size:0.8rem;
-      font-weight:600;
-      cursor:pointer;
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      white-space:nowrap;
-    }
-    .btn-primary{
-      background:var(--accent);
-      color:white;
-    }
-    .btn-primary:disabled{
-      opacity:0.4;
-      cursor:not-allowed;
-    }
-
-    /* Box de total pendente */
-    .pending-box{
-      margin-top:8px;
-      padding:8px 12px;
-      border-radius:10px;
-      background:#fef2f2;
-      border:1px solid #fecaca;
-      font-size:0.8rem;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:8px;
-    }
-    .pending-box strong{
-      font-size:0.95rem;
-    }
-
-    .results{
-      margin-top:10px;
-      border-top:1px solid var(--border);
-      padding-top:10px;
-    }
-    .results-section{
-      margin-top:10px;
-    }
-    .results-header{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      margin-bottom:4px;
-      gap:8px;
-    }
-    .results-header h3{
-      font-size:0.85rem;
-      font-weight:700;
-    }
-    .pill{
-      font-size:0.7rem;
-      padding:2px 8px;
-      border-radius:999px;
-      background:#e5e7eb;
-    }
-    table{
-      width:100%;
-      border-collapse:collapse;
-      font-size:0.75rem;
-    }
-    th, td{
-      border:1px solid #e5e7eb;
-      padding:4px 6px;
-      text-align:left;
-    }
-    th{
-      background:#f3f4f6;
-      font-weight:600;
-    }
-    tbody tr:nth-child(even){
-      background:#f9fafb;
-    }
-
-    /* Linha de grupo nas tabelas */
-    .group-row td{
-      background:#e5e7eb;
-      font-weight:600;
-      font-size:0.75rem;
-    }
-
-    /* Tags de status */
-    .tag-status{
-      font-size:0.7rem;
-      font-weight:700;
-      padding:2px 8px;
-      border-radius:999px;
-      display:inline-block;
-    }
-    .tag-conc{
-      background:#dcfce7;
-      color:#166534;
-    }
-    .tag-pend{
-      background:#fee2e2;
-      color:#b91c1c;
-    }
-
-    .totals{
-      font-size:0.75rem;
-      color:var(--muted);
-      margin-top:4px;
-    }
-
-    /* Resumo por grupo */
-    #grupoResumo{
-      margin-top:10px;
-    }
-    #grupoResumoTexto{
-      margin-top:6px;
-      white-space:pre-line;
-      font-size:0.8rem;
-      color:var(--text);
-    }
+    :root{--bg:#f6f8fb;--card:#fff;--accent:#2b6cb0;--muted:#6b7280}
+    body{font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg);margin:0;padding:24px;color:#111}
+    .wrap{max-width:980px;margin:0 auto}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    h1{font-size:20px;margin:0}
+    .card{background:var(--card);padding:16px;border-radius:12px;box-shadow:0 6px 18px rgba(14,20,30,0.06);}
+    form{display:grid;grid-template-columns:1fr 1fr 120px 120px;gap:10px;align-items:end}
+    label{font-size:12px;color:var(--muted)}
+    input,select{padding:8px;border-radius:8px;border:1px solid #e6e9ef;width:100%;box-sizing:border-box}
+    button{padding:10px 14px;border-radius:10px;border:0;background:var(--accent);color:#fff;cursor:pointer}
+    .summary{display:flex;gap:12px;margin-top:12px}
+    .summary .item{flex:1;padding:12px;border-radius:10px;background:#fff;text-align:center}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:10px;border-bottom:1px solid #eef2f7;text-align:left}
+    .right{text-align:right}
+    .muted{color:var(--muted);font-size:13px}
+    .btn-ghost{background:transparent;border:1px solid #e2e8f0;color:#111;padding:6px 10px;border-radius:8px}
+    .reconciled{background:#edfff3;color:#065f46;padding:6px 8px;border-radius:8px;font-weight:600}
+    .actions button{margin-left:6px}
+    footer{margin-top:18px;color:var(--muted);font-size:13px}
+    #syncStatus{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px}
+    #syncStatus.ok{color:green}
+    #syncStatus.error{color:#b91c1c}
   </style>
 </head>
 <body>
-<div class="app">
-  <header>
-    <div>
-      <h1>Conciliação de Caixa — Minha Planilha x Fornecedor</h1>
-      <p>Importe duas planilhas Excel, escolha as colunas de <strong>Documento</strong> e <strong>Valor</strong> e veja a conciliação.</p>
-    </div>
-    <span class="badge">Modo offline · HTML único</span>
-  </header>
+  <div class="wrap">
+    <header>
+      <h1>Conciliação de Caixa — MVP</h1>
+      <div id="syncStatus">Sincronizando…</div>
+    </header>
 
-  <div class="grid">
-    <!-- Minha planilha -->
-    <div class="card">
-      <h2>Minha planilha (interno)</h2>
-      <label class="label" for="fileMeus">Arquivo XLS/XLSX</label>
-      <input type="file" id="fileMeus" accept=".xls,.xlsx">
-      <div class="small-text">Usa somente a primeira aba da planilha.</div>
+    <section class="card">
+      <form id="txForm">
+        <div>
+          <label for="date">Data</label>
+          <input id="date" type="date" required />
+        </div>
+        <div>
+          <label for="desc">Descrição</label>
+          <input id="desc" type="text" placeholder="Ex: Venda, pagamento" required />
+        </div>
+        <div>
+          <label for="type">Tipo</label>
+          <select id="type">
+            <option value="credit">Crédito</option>
+            <option value="debit">Débito</option>
+          </select>
+        </div>
+        <div>
+          <label for="amount">Valor (R$)</label>
+          <input id="amount" type="number" step="0.01" placeholder="0.00" required />
+        </div>
+        <div style="grid-column:1 / -1;display:flex;gap:8px;margin-top:6px">
+          <button id="addBtn" type="submit">Adicionar transação</button>
+          <button id="clearBtn" type="button" class="btn-ghost">Limpar formulário</button>
+          <button id="syncBtn" type="button" class="btn-ghost">Forçar sincronia</button>
+        </div>
+        <br>
+  <button id="clearForm" class="btn btn-warning w-100">Limpar Formulário</button>
+  <br><br>
+  <button id="exportExcel" class="btn btn-success w-100">Gerar Relatório (Excel)</button>
+</form>
 
-      <div style="margin-top:8px;">
-        <label class="label" for="meusDocCol">Coluna de Documento</label>
-        <select id="meusDocCol">
-          <option value="">Carregue o arquivo primeiro...</option>
-        </select>
+      <div class="summary" id="summary">
+        <div class="item">
+          <div class="muted">Saldo Inicial</div>
+          <div id="initialBalance">R$ 0,00</div>
+        </div>
+        <div class="item">
+          <div class="muted">Entradas</div>
+          <div id="credits">R$ 0,00</div>
+        </div>
+        <div class="item">
+          <div class="muted">Saídas</div>
+          <div id="debits">R$ 0,00</div>
+        </div>
+        <div class="item">
+          <div class="muted">Saldo Atual</div>
+          <div id="balance">R$ 0,00</div>
+        </div>
       </div>
 
-      <div style="margin-top:6px;">
-        <label class="label" for="meusValorCol">Coluna de Valor 1</label>
-        <select id="meusValorCol">
-          <option value="">Carregue o arquivo primeiro...</option>
-        </select>
-      </div>
+      <table id="txTable">
+        <thead>
+          <tr><th>Data</th><th>Descrição</th><th>Tipo</th><th class="right">Valor</th><th>Estado</th><th>Ações</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
 
-      <div style="margin-top:6px;">
-        <label class="label" for="meusValorCol2">Coluna de Valor 2 (somar com a 1)</label>
-        <select id="meusValorCol2">
-          <option value="">(opcional)</option>
-        </select>
-        <div class="small-text">Se selecionar, Valor 1 + Valor 2 serão somados antes de comparar com o fornecedor.</div>
-      </div>
-
-      <div style="margin-top:6px;">
-        <label class="label" for="meusGrupoCol">Coluna para resumo (ex: cidade, filial, praça)</label>
-        <select id="meusGrupoCol">
-          <option value="">(opcional)</option>
-        </select>
-        <div class="small-text">Será usado para agrupar os <strong>pendentes</strong> e também subdividir as tabelas por grupo.</div>
-      </div>
-
-      <div id="statusMeus" class="status-line"></div>
-    </div>
-
-    <!-- Planilha fornecedor -->
-    <div class="card">
-      <h2>Planilha do fornecedor</h2>
-      <label class="label" for="fileFornecedor">Arquivo XLS/XLSX</label>
-      <input type="file" id="fileFornecedor" accept=".xls,.xlsx">
-      <div class="small-text">Usa somente a primeira aba da planilha.</div>
-
-      <div style="margin-top:8px;">
-        <label class="label" for="fornDocCol">Coluna de Documento</label>
-        <select id="fornDocCol">
-          <option value="">Carregue o arquivo primeiro...</option>
-        </select>
-      </div>
-
-      <div style="margin-top:6px;">
-        <label class="label" for="fornValorCol">Coluna de Valor</label>
-        <select id="fornValorCol">
-          <option value="">Carregue o arquivo primeiro...</option>
-        </select>
-      </div>
-
-      <div id="statusForn" class="status-line"></div>
-    </div>
+      <footer>
+        <div class="muted">Aviso: em produção configure regras de segurança no Firebase e adicione autenticação.</div>
+      </footer>
+    </section>
   </div>
 
-  <div class="btn-row">
-    <button id="btnComparar" class="btn-primary" disabled>
-      🔍 Comparar planilhas
-    </button>
-    <span class="small-text">Habilita quando os dois arquivos forem carregados e as colunas forem escolhidas.</span>
-  </div>
+  <!-- Firebase modular v12 -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+    import { getDatabase, ref, push, onValue, update, remove, get } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
 
-  <div id="statusGlobal" class="status-line"></div>
-
-  <!-- Campo visual de total pendente -->
-  <div id="resumoPendentes" class="pending-box" style="display:none;">
-    <span>Total pendente (minha planilha ainda não localizado no fornecedor):</span>
-    <strong id="valorTotalPendente">R$ 0,00</strong>
-  </div>
-
-  <!-- Resumo por grupo (pendentes) -->
-  <div id="grupoResumo" class="card" style="display:none;">
-    <h2>Resumo por grupo dos títulos em aberto</h2>
-    <div class="small-text" id="grupoResumoTitulo"></div>
-    <div id="grupoResumoTexto"></div>
-  </div>
-
-  <div class="results" id="results" style="display:none;">
-    <!-- Conciliados -->
-    <div class="results-section" id="secConciliados">
-      <div class="results-header">
-        <h3>Documentos conciliados</h3>
-        <span class="pill" id="countConciliados">0 documentos</span>
-      </div>
-      <div class="totals" id="totConciliados"></div>
-      <div class="table-wrapper">
-        <table id="tblConciliados">
-          <thead>
-            <tr>
-              <th>Documento</th>
-              <th>Valor Minha Planilha</th>
-              <th>Valor Fornecedor</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Divergências -->
-    <div class="results-section" id="secDivergencias">
-      <div class="results-header">
-        <h3>Divergências de valor</h3>
-        <span class="pill" id="countDivergencias">0 documentos</span>
-      </div>
-      <div class="totals" id="totDivergencias"></div>
-      <div class="table-wrapper">
-        <table id="tblDivergencias">
-          <thead>
-            <tr>
-              <th>Documento</th>
-              <th>Valor Minha Planilha</th>
-              <th>Valor Fornecedor</th>
-              <th>Diferença</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Só na minha (pendentes) -->
-    <div class="results-section" id="secSoMeus">
-      <div class="results-header">
-        <h3>Pendências (somente na minha planilha)</h3>
-        <span class="pill" id="countSoMeus">0 documentos</span>
-      </div>
-      <div class="totals" id="totSoMeus"></div>
-      <div class="table-wrapper">
-        <table id="tblSoMeus">
-          <thead>
-            <tr>
-              <th>Documento</th>
-              <th>Valor Minha Planilha</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-  let meusDados = null;
-  let fornDados = null;
-
-  const fileMeus = document.getElementById('fileMeus');
-  const fileFornecedor = document.getElementById('fileFornecedor');
-  const statusMeus = document.getElementById('statusMeus');
-  const statusForn = document.getElementById('statusForn');
-  const statusGlobal = document.getElementById('statusGlobal');
-  const btnComparar = document.getElementById('btnComparar');
-
-  const selMeusDoc    = document.getElementById('meusDocCol');
-  const selMeusValor  = document.getElementById('meusValorCol');
-  const selMeusValor2 = document.getElementById('meusValorCol2');
-  const selMeusGrupo  = document.getElementById('meusGrupoCol');
-  const selFornDoc    = document.getElementById('fornDocCol');
-  const selFornValor  = document.getElementById('fornValorCol');
-
-  function lerArquivoExcel(file, callbackOk, callbackErr){
-    const reader = new FileReader();
-    reader.onload = function(e){
-      try{
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, {type:'array'});
-        const primeiraAba = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[primeiraAba];
-        const arr = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''}); // matriz [lin][col]
-        callbackOk(arr);
-      }catch(err){
-        console.error(err);
-        callbackErr(err);
-      }
+    // Config do seu projeto (fin-agre) — já com databaseURL
+    const firebaseConfig = {
+      apiKey: "AIzaSyAIZ-TJHzBgAVXQ1XuN6Z7CVvI93pSM-4Q",
+      authDomain: "fin-agre.firebaseapp.com",
+      projectId: "fin-agre",
+      storageBucket: "fin-agre.firebasestorage.app",
+      messagingSenderId: "841191455272",
+      appId: "1:841191455272:web:3779751e0a1c424a7bd31d",
+      measurementId: "G-513KYHHPMG",
+      databaseURL: "https://fin-agre-default-rtdb.firebaseio.com"
     };
-    reader.onerror = function(err){
-      console.error(err);
-      callbackErr(err);
-    };
-    reader.readAsArrayBuffer(file);
-  }
 
-  // Preenche selects da MINHA planilha (doc + valor1 + valor2 + grupo)
-  function preencherSelectsMeus(headers){
-    selMeusDoc.innerHTML = '';
-    selMeusValor.innerHTML = '';
-    selMeusValor2.innerHTML = '';
-    selMeusGrupo.innerHTML = '';
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const txRef = ref(db, 'transactions');
 
-    const optDoc = document.createElement('option');
-    optDoc.value = '';
-    optDoc.textContent = 'Selecione...';
-    selMeusDoc.appendChild(optDoc);
+    // UI
+    const form = document.getElementById('txForm');
+    const tableBody = document.querySelector('#txTable tbody');
+    const creditsEl = document.getElementById('credits');
+    const debitsEl = document.getElementById('debits');
+    const balanceEl = document.getElementById('balance');
+    const initialBalanceEl = document.getElementById('initialBalance');
+    const syncStatusEl = document.getElementById('syncStatus');
 
-    const optVal1 = document.createElement('option');
-    optVal1.value = '';
-    optVal1.textContent = 'Selecione...';
-    selMeusValor.appendChild(optVal1);
+    // Estado
+    let transactions = {};
+    let initialBalance = 0.00;
 
-    const optVal2 = document.createElement('option');
-    optVal2.value = '';
-    optVal2.textContent = '(opcional)';
-    selMeusValor2.appendChild(optVal2);
-
-    const optGrupo = document.createElement('option');
-    optGrupo.value = '';
-    optGrupo.textContent = '(opcional)';
-    selMeusGrupo.appendChild(optGrupo);
-
-    headers.forEach((nome, idx)=>{
-      const texto = (nome || '').toString().trim() || `Coluna ${idx+1}`;
-
-      const oDoc = document.createElement('option');
-      oDoc.value = idx;
-      oDoc.textContent = texto;
-      selMeusDoc.appendChild(oDoc);
-
-      const oV1 = document.createElement('option');
-      oV1.value = idx;
-      oV1.textContent = texto;
-      selMeusValor.appendChild(oV1);
-
-      const oV2 = document.createElement('option');
-      oV2.value = idx;
-      oV2.textContent = texto;
-      selMeusValor2.appendChild(oV2);
-
-      const oG = document.createElement('option');
-      oG.value = idx;
-      oG.textContent = texto;
-      selMeusGrupo.appendChild(oG);
-    });
-
-    autoSelecionarColuna(headers, selMeusDoc, ['doc','documento','nf','titulo','boleto']);
-    autoSelecionarColuna(headers, selMeusValor, ['valor','vl','vr','amount']);
-  }
-
-  // Preenche selects do FORNECEDOR (doc + valor)
-  function preencherSelectsForn(headers){
-    selFornDoc.innerHTML = '';
-    selFornValor.innerHTML = '';
-
-    const optDoc = document.createElement('option');
-    optDoc.value = '';
-    optDoc.textContent = 'Selecione...';
-    selFornDoc.appendChild(optDoc);
-
-    const optVal = document.createElement('option');
-    optVal.value = '';
-    optVal.textContent = 'Selecione...';
-    selFornValor.appendChild(optVal);
-
-    headers.forEach((nome, idx)=>{
-      const texto = (nome || '').toString().trim() || `Coluna ${idx+1}`;
-
-      const oDoc = document.createElement('option');
-      oDoc.value = idx;
-      oDoc.textContent = texto;
-      selFornDoc.appendChild(oDoc);
-
-      const oVal = document.createElement('option');
-      oVal.value = idx;
-      oVal.textContent = texto;
-      selFornValor.appendChild(oVal);
-    });
-
-    autoSelecionarColuna(headers, selFornDoc, ['doc','documento','nf','titulo','boleto']);
-    autoSelecionarColuna(headers, selFornValor, ['valor','vl','vr','amount']);
-  }
-
-  function autoSelecionarColuna(headers, select, palavras){
-    const lower = headers.map(h=>h.toString().toLowerCase());
-    for(let i=0;i<lower.length;i++){
-      for(const p of palavras){
-        if(lower[i].includes(p)){
-          select.value = i;
-          return;
-        }
-      }
-    }
-  }
-
-  function atualizarEstadoBotao(){
-    const ok = meusDados && fornDados &&
-      selMeusDoc.value !== '' && selMeusValor.value !== '' &&
-      selFornDoc.value !== '' && selFornValor.value !== '';
-    btnComparar.disabled = !ok;
-  }
-
-  fileMeus.addEventListener('change', ()=>{
-    const file = fileMeus.files[0];
-    meusDados = null;
-    statusMeus.textContent = '';
-    if(!file) return;
-
-    statusMeus.textContent = 'Lendo arquivo...';
-    lerArquivoExcel(file, (arr)=>{
-      if(!arr.length){
-        statusMeus.textContent = 'Arquivo sem dados.';
-        statusMeus.className = 'status-line status-err';
-        return;
-      }
-      const headers = arr[0];
-      meusDados = arr;
-      preencherSelectsMeus(headers);
-      statusMeus.textContent = `Planilha carregada com ${arr.length-1} linhas.`;
-      statusMeus.className = 'status-line status-ok';
-      atualizarEstadoBotao();
-    }, ()=>{
-      statusMeus.textContent = 'Erro ao ler arquivo. Verifique o formato.';
-      statusMeus.className = 'status-line status-err';
-    });
-  });
-
-  fileFornecedor.addEventListener('change', ()=>{
-    const file = fileFornecedor.files[0];
-    fornDados = null;
-    statusForn.textContent = '';
-    if(!file) return;
-
-    statusForn.textContent = 'Lendo arquivo...';
-    lerArquivoExcel(file, (arr)=>{
-      if(!arr.length){
-        statusForn.textContent = 'Arquivo sem dados.';
-        statusForn.className = 'status-line status-err';
-        return;
-      }
-      const headers = arr[0];
-      fornDados = arr;
-      preencherSelectsForn(headers);
-      statusForn.textContent = `Planilha carregada com ${arr.length-1} linhas.`;
-      statusForn.className = 'status-line status-ok';
-      atualizarEstadoBotao();
-    }, ()=>{
-      statusForn.textContent = 'Erro ao ler arquivo. Verifique o formato.';
-      statusForn.className = 'status-line status-err';
-    });
-  });
-
-  selMeusDoc.addEventListener('change', atualizarEstadoBotao);
-  selMeusValor.addEventListener('change', atualizarEstadoBotao);
-  selMeusValor2.addEventListener('change', atualizarEstadoBotao);
-  selMeusGrupo.addEventListener('change', atualizarEstadoBotao);
-  selFornDoc.addEventListener('change', atualizarEstadoBotao);
-  selFornValor.addEventListener('change', atualizarEstadoBotao);
-
-  function normalizarDoc(v){
-    if(v === null || v === undefined) return '';
-    return String(v).trim().replace(/[^0-9A-Za-z]/g,'').toUpperCase();
-  }
-
-  function parseValor(v){
-    if(v === null || v === undefined) return 0;
-    let s = String(v).trim();
-    if(!s) return 0;
-    s = s.replace(/\s/g,'');
-    const temVirgula = s.includes(',');
-    const temPonto = s.includes('.');
-
-    if(temVirgula && temPonto){
-      // assume formato 1.234,56
-      s = s.replace(/\./g,'').replace(',', '.');
-    } else if(temVirgula && !temPonto){
-      // assume 1234,56
-      s = s.replace(',', '.');
-    }
-    const n = parseFloat(s.replace(/[^0-9.-]/g,''));
-    return isNaN(n) ? 0 : n;
-  }
-
-  function formatarMoeda(n){
-    return n.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
-  }
-
-  btnComparar.addEventListener('click', ()=>{
-    statusGlobal.textContent = '';
-    if(!meusDados || !fornDados){
-      statusGlobal.textContent = 'Carregue as duas planilhas primeiro.';
-      statusGlobal.className = 'status-line status-err';
-      return;
+    function fmt(v){
+      return 'R$ ' + Number(v || 0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
     }
 
-    const idxMeusDoc   = parseInt(selMeusDoc.value,10);
-    const idxMeusVal1  = parseInt(selMeusValor.value,10);
-    const idxMeusVal2  = selMeusValor2.value === '' ? null : parseInt(selMeusValor2.value,10);
-    const idxMeusGrupo = selMeusGrupo.value === '' ? null : parseInt(selMeusGrupo.value,10);
-    const idxFornDoc   = parseInt(selFornDoc.value,10);
-    const idxFornVal   = parseInt(selFornValor.value,10);
-
-    if([idxMeusDoc,idxMeusVal1,idxFornDoc,idxFornVal].some(isNaN)){
-      statusGlobal.textContent = 'Selecione todas as colunas obrigatórias de documento e valor.';
-      statusGlobal.className = 'status-line status-err';
-      return;
+    function escapeHtml(unsafe) {
+      return String(unsafe||'')
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
     }
 
-    const mapMeus = {};
-    const mapForn = {};
-
-    // Minha planilha: valor = valor1 (+ valor2 se selecionado) e grupo opcional
-    for(let i=1;i<meusDados.length;i++){
-      const row = meusDados[i];
-      const docBruto = row[idxMeusDoc];
-      const doc = normalizarDoc(docBruto);
-      if(!doc) continue;
-
-      let valor = parseValor(row[idxMeusVal1]);
-      if(idxMeusVal2 !== null && !isNaN(idxMeusVal2)){
-        valor += parseValor(row[idxMeusVal2]);
-      }
-
-      let grupo = '';
-      if(idxMeusGrupo !== null && !isNaN(idxMeusGrupo)){
-        grupo = (row[idxMeusGrupo] ?? '').toString().trim();
-      }
-
-      mapMeus[doc] = {docBruto, valor, grupo};
-    }
-
-    // Fornecedor: valor simples
-    for(let i=1;i<fornDados.length;i++){
-      const row = fornDados[i];
-      const docBruto = row[idxFornDoc];
-      const doc = normalizarDoc(docBruto);
-      if(!doc) continue;
-      const valor = parseValor(row[idxFornVal]);
-      mapForn[doc] = {docBruto, valor};
-    }
-
-    const conciliados = [];
-    const divergencias = [];
-    const soMeus = [];
-
-    const visitadosForn = new Set();
-
-    for(const doc in mapMeus){
-      const m = mapMeus[doc];
-      const f = mapForn[doc];
-      if(f){
-        visitadosForn.add(doc);
-        if(Math.abs(m.valor - f.valor) < 0.01){
-          // REGRA 1: valores batem -> CONCILIADO
-          conciliados.push({doc:m.docBruto, valorM:m.valor, valorF:f.valor, grupo:m.grupo});
-        }else{
-          divergencias.push({
-            doc:m.docBruto,
-            valorM:m.valor,
-            valorF:f.valor,
-            diff:m.valor - f.valor
-          });
-        }
+    function setSync(status, msg){
+      syncStatusEl.classList.remove('ok','error');
+      if(status === 'ok'){
+        syncStatusEl.classList.add('ok');
+        syncStatusEl.textContent = '✔ Sincronizado';
+      } else if(status === 'error'){
+        syncStatusEl.classList.add('error');
+        syncStatusEl.textContent = 'Erro: ' + (msg||'');
       } else {
-        // REGRA 2: documento da minha planilha não encontrado no fornecedor -> PENDENTE
-        soMeus.push({doc:m.docBruto, valor:m.valor, grupo:m.grupo});
+        syncStatusEl.textContent = 'Sincronizando…';
       }
     }
 
-    preencherTabelaConciliados(conciliados);
-    preencherTabelaDivergencias(divergencias);
-    preencherTabelaSoMeus(soMeus);
+    function render(){
+      tableBody.innerHTML = '';
+      let credits = 0, debits = 0;
+      const keys = Object.keys(transactions || {});
+      // Sort by date desc
+      keys.sort((a,b)=>{
+        const da = transactions[a] && transactions[a].date ? new Date(transactions[a].date) : new Date(0);
+        const dbd = transactions[b] && transactions[b].date ? new Date(transactions[b].date) : new Date(0);
+        return dbd - da;
+      });
 
-    // Resumo por grupo (apenas pendentes)
-    const headersMeus = meusDados[0] || [];
-    const nomeColGrupo = (idxMeusGrupo !== null && !isNaN(idxMeusGrupo)) ? (headersMeus[idxMeusGrupo] || '').toString().trim() : '';
-    preencherResumoGrupos(soMeus, nomeColGrupo);
+      keys.forEach(key=>{
+        const tx = transactions[key];
+        if(!tx) return;
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td>'+ (tx.date||'') +'</td>'+
+                       '<td>'+ escapeHtml(tx.desc) +'</td>'+
+                       '<td>'+(tx.type==='credit'?'Crédito':'Débito')+'</td>'+
+                       '<td class="right">'+ fmt(tx.amount) +'</td>'+
+                       '<td>'+(tx.reconciled?'<span class="reconciled">Conciliado</span>':'<span class="muted">Pendente</span>')+'</td>'+
+                       '<td class="actions">'
+                         +'<button class="btn-ghost" data-action="toggle" data-id="'+key+'">Toggle</button>'
+                         +'<button class="btn-ghost" data-action="delete" data-id="'+key+'">Excluir</button>'
+                       +'</td>';
+        tableBody.appendChild(tr);
+        if(tx.type==='credit') credits += Number(tx.amount||0);
+        else debits += Number(tx.amount||0);
+      });
 
-    statusGlobal.textContent = 'Conciliação concluída.';
-    statusGlobal.className = 'status-line status-ok';
-    document.getElementById('results').style.display = 'block';
+      creditsEl.textContent = fmt(credits);
+      debitsEl.textContent = fmt(debits);
+      balanceEl.textContent = fmt(initialBalance + credits - debits);
+      initialBalanceEl.textContent = fmt(initialBalance);
+    }
+
+    // Listen for changes
+    setSync('loading');
+    onValue(txRef, (snapshot)=>{
+      try{
+        setSync('loading');
+        const val = snapshot.val() || {};
+        if(val._initialBalance !== undefined) initialBalance = Number(val._initialBalance);
+        const copy = Object.assign({}, val);
+        delete copy._initialBalance;
+        transactions = copy;
+        render();
+        setSync('ok');
+      }catch(err){
+        console.error('Erro lendo DB:', err);
+        setSync('error', err.message);
+      }
+    }, (error)=>{
+      console.error('onValue error:', error);
+      setSync('error', error && error.message ? error.message : String(error));
+    });
+
+    // Form submit
+    form.addEventListener('submit', async function(e){
+      e.preventDefault();
+      const date = document.getElementById('date').value;
+      const desc = document.getElementById('desc').value.trim();
+      const type = document.getElementById('type').value;
+      const amount = parseFloat(document.getElementById('amount').value) || 0;
+      if(!date || !desc || amount===0){ alert('Preencha todos os campos corretamente.'); return; }
+      const payload = { date: date, desc: desc, type: type, amount: Number(amount), reconciled: false };
+      try{
+        setSync('loading');
+        await push(txRef, payload);
+        form.reset();
+        setSync('ok');
+      }catch(err){
+        console.error('Erro ao salvar:', err);
+        setSync('error', err && err.message ? err.message : String(err));
+        alert('Erro ao salvar: ' + (err && err.message ? err.message : String(err)));
+      }
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', function(){ form.reset(); });
+    document.getElementById('syncBtn').addEventListener('click', function(){
+      setSync('loading');
+      get(txRef).then(s=>{
+        transactions = s.val() || {};
+        render();
+        setSync('ok');
+      }).catch(err=>{ setSync('error', err.message); console.error(err); });
+    });
+
+    // Table actions
+    tableBody.addEventListener('click', function(e){
+      const btn = e.target.closest('button'); if(!btn) return;
+      const action = btn.dataset.action, id = btn.dataset.id;
+      if(action === 'delete'){
+        if(!confirm('Excluir transação?')) return;
+        remove(ref(db, 'transactions/' + id)).catch(err=>{ setSync('error', err.message); console.error(err); alert('Erro: '+err.message); });
+      } else if(action === 'toggle'){
+        const cur = transactions[id]; if(!cur) return;
+        update(ref(db, 'transactions/' + id), { reconciled: !cur.reconciled }).catch(err=>{ setSync('error', err.message); console.error(err); alert('Erro: '+err.message); });
+      }
+    });
+
+    // inicial render
+    render();
+  // Corrigir botão limpar formulário
+const btnClear = document.getElementById('clearForm');
+btnClear.addEventListener('click', () => {
+  document.getElementById('data').value = '';
+  document.getElementById('descricao').value = '';
+  document.getElementById('valor').value = '';
+});
+
+// Gerar relatório Excel
+import("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js").then(() => {
+  document.getElementById('exportExcel').addEventListener('click', () => {
+    const table = document.getElementById('tabelaTransacoes');
+    const wb = XLSX.utils.table_to_book(table, { sheet: "Relatório" });
+    XLSX.writeFile(wb, "relatorio_conciliacao.xlsx");
   });
+});
 
-  function preencherTabelaConciliados(lista){
-    const tbody = document.querySelector('#tblConciliados tbody');
-    tbody.innerHTML = '';
-    let totalM = 0, totalF = 0;
-
-    // calcula totais gerais
-    lista.forEach(item=>{
-      totalM += item.valorM;
-      totalF += item.valorF;
-    });
-
-    // Agrupamento por grupo, se houver
-    const existeGrupo = lista.some(it => it.grupo && it.grupo.toString().trim() !== '');
-    if(existeGrupo){
-      const gruposMap = {};
-      lista.forEach(item=>{
-        const gRaw = (item.grupo || '').toString().trim();
-        const g = gRaw || '[Sem grupo]';
-        if(!gruposMap[g]) gruposMap[g] = [];
-        gruposMap[g].push(item);
-      });
-
-      const grupos = Object.keys(gruposMap).sort();
-      grupos.forEach(g=>{
-        const trGrupo = document.createElement('tr');
-        trGrupo.className = 'group-row';
-        trGrupo.innerHTML = `<td colspan="4">${g}</td>`;
-        tbody.appendChild(trGrupo);
-
-        gruposMap[g].forEach(item=>{
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${item.doc}</td>
-            <td>${formatarMoeda(item.valorM)}</td>
-            <td>${formatarMoeda(item.valorF)}</td>
-            <td><span class="tag-status tag-conc">CONCILIADO</span></td>
-          `;
-          tbody.appendChild(tr);
-        });
-      });
-    } else {
-      // sem grupo, tabela simples
-      lista.forEach(item=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${item.doc}</td>
-          <td>${formatarMoeda(item.valorM)}</td>
-          <td>${formatarMoeda(item.valorF)}</td>
-          <td><span class="tag-status tag-conc">CONCILIADO</span></td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    document.getElementById('countConciliados').textContent =
-      `${lista.length} documentos`;
-    document.getElementById('totConciliados').textContent =
-      `Total minha planilha: ${formatarMoeda(totalM)} · Total fornecedor: ${formatarMoeda(totalF)}`;
-  }
-
-  function preencherTabelaDivergencias(lista){
-    const tbody = document.querySelector('#tblDivergencias tbody');
-    tbody.innerHTML = '';
-    let totalDiff = 0;
-
-    lista.forEach(item=>{
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${item.doc}</td>
-        <td>${formatarMoeda(item.valorM)}</td>
-        <td>${formatarMoeda(item.valorF)}</td>
-        <td>${formatarMoeda(item.diff)}</td>
-      `;
-      tbody.appendChild(tr);
-      totalDiff += item.diff;
-    });
-
-    document.getElementById('countDivergencias').textContent =
-      `${lista.length} documentos`;
-    document.getElementById('totDivergencias').textContent =
-      `Somatório das diferenças: ${formatarMoeda(totalDiff)}`;
-  }
-
-  function preencherTabelaSoMeus(lista){
-    const tbody = document.querySelector('#tblSoMeus tbody');
-    tbody.innerHTML = '';
-    let total = 0;
-
-    // soma total geral
-    lista.forEach(item => total += item.valor);
-
-    // Agrupamento por grupo, se houver
-    const existeGrupo = lista.some(it => it.grupo && it.grupo.toString().trim() !== '');
-    if(existeGrupo){
-      const gruposMap = {};
-      lista.forEach(item=>{
-        const gRaw = (item.grupo || '').toString().trim();
-        const g = gRaw || '[Sem grupo]';
-        if(!gruposMap[g]) gruposMap[g] = [];
-        gruposMap[g].push(item);
-      });
-
-      const grupos = Object.keys(gruposMap).sort();
-      grupos.forEach(g=>{
-        const trGrupo = document.createElement('tr');
-        trGrupo.className = 'group-row';
-        trGrupo.innerHTML = `<td colspan="3">${g}</td>`;
-        tbody.appendChild(trGrupo);
-
-        gruposMap[g].forEach(item=>{
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${item.doc}</td>
-            <td>${formatarMoeda(item.valor)}</td>
-            <td><span class="tag-status tag-pend">PENDENTE</span></td>
-          `;
-          tbody.appendChild(tr);
-        });
-      });
-    } else {
-      // sem grupo, tabela simples
-      lista.forEach(item=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${item.doc}</td>
-          <td>${formatarMoeda(item.valor)}</td>
-          <td><span class="tag-status tag-pend">PENDENTE</span></td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    document.getElementById('countSoMeus').textContent =
-      `${lista.length} documentos`;
-    document.getElementById('totSoMeus').textContent =
-      `Total pendente (somente na minha planilha): ${formatarMoeda(total)}`;
-
-    // Atualiza box visual de total pendente
-    const resumoPendentes = document.getElementById('resumoPendentes');
-    const valorTotalPendente = document.getElementById('valorTotalPendente');
-    valorTotalPendente.textContent = formatarMoeda(total);
-    resumoPendentes.style.display = total > 0 ? 'flex' : 'none';
-  }
-
-  function preencherResumoGrupos(soMeus, nomeColGrupo){
-    const box = document.getElementById('grupoResumo');
-    const titulo = document.getElementById('grupoResumoTitulo');
-    const texto = document.getElementById('grupoResumoTexto');
-
-    if(!nomeColGrupo){
-      box.style.display = 'none';
-      texto.textContent = '';
-      return;
-    }
-
-    const totais = {};
-    soMeus.forEach(item=>{
-      const grupo = (item.grupo || '').toString().trim();
-      if(!grupo) return;
-      if(!totais[grupo]) totais[grupo] = 0;
-      totais[grupo] += item.valor;
-    });
-
-    const grupos = Object.keys(totais);
-    if(grupos.length === 0){
-      box.style.display = 'none';
-      texto.textContent = '';
-      return;
-    }
-
-    titulo.textContent = `Agrupado por: ${nomeColGrupo}`;
-    const linhas = grupos.sort().map(g => `${g}: ${formatarMoeda(totais[g])} em aberto`);
-    texto.textContent = linhas.join('\n');
-    box.style.display = 'block';
-  }
 </script>
 </body>
 </html>
