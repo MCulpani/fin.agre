@@ -69,6 +69,11 @@ async function getDrivingDistance(lat1, lon1, lat2, lon2) {
   return null;
 }
 
+function parseNumber(value){
+  if (!value) return null;
+  return parseFloat(String(value).replace(',', '.'));
+}
+
 function processarRotas(){
   const file = document.getElementById("fileInput").files[0];
   if (!file) { alert("Selecione um arquivo Excel!"); return; }
@@ -82,7 +87,7 @@ function processarRotas(){
     const data = new Uint8Array(evt.target.result);
     const workbook = XLSX.read(data, { type: "array" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet);
+    let rows = XLSX.utils.sheet_to_json(sheet);
 
     transactions = [];
 
@@ -91,27 +96,17 @@ function processarRotas(){
 
     (async () => {
       for (const r of rows) {
-        if (r.CidadeOrigem && r.CidadeDestino && r.LatitudeOrigem && r.LongitudeOrigem && r.LatitudeDestino && r.LongitudeDestino) {
+        const origem = r.origem_cidade;
+        const destino = r.destino_cidade;
+        const lat_o = parseNumber(r.origem_lat);
+        const lng_o = parseNumber(r.origem_lng);
+        const lat_d = parseNumber(r.destino_lat);
+        const lng_d = parseNumber(r.destino_lng);
 
-          // Conversão vírgula → ponto
-          const latO = parseFloat(r.LatitudeOrigem.toString().replace(",", "."));
-          const lngO = parseFloat(r.LongitudeOrigem.toString().replace(",", "."));
-          const latD = parseFloat(r.LatitudeDestino.toString().replace(",", "."));
-          const lngD = parseFloat(r.LongitudeDestino.toString().replace(",", "."));
-
-          const dist = await getDrivingDistance(latO, lngO, latD, lngD);
-
-          transactions.push({
-            origem: r.CidadeOrigem,
-            lat_o: latO,
-            lng_o: lngO,
-            destino: r.CidadeDestino,
-            lat_d: latD,
-            lng_d: lngD,
-            distancia: dist
-          });
+        if (origem && destino && lat_o && lng_o && lat_d && lng_d) {
+          const dist = await getDrivingDistance(lat_o, lng_o, lat_d, lng_d);
+          transactions.push({ origem, destino, lat_o, lng_o, lat_d, lng_d, distancia: dist });
         }
-
         count++;
         let pct = Math.round((count / total) * 100);
         progress.style.width = pct + "%";
@@ -135,7 +130,7 @@ function render() {
       <td>${t.destino}</td>
       <td>${t.lat_d}</td>
       <td>${t.lng_d}</td>
-      <td>${t.distancia ? t.distancia + ' km' : 'Erro'}</td>`;
+      <td>${t.distancia} km</td>`;
     tbody.appendChild(tr);
   });
 }
