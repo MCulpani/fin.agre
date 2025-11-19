@@ -3,359 +3,129 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Roteirização — calcular km via planilha</title>
-  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
-  <!-- SheetJS para leitura/escrita Excel -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <title>Roteirização por Latitude/Longitude</title>
   <style>
-    :root{
-      --bg:#f3f6fb; --card:#fff; --accent:#0369a1; --accent-2:#0ea5a4; --muted:#58606a;
-      --success:#15803d; --danger:#ef4444;
-    }
-    *{box-sizing:border-box}
-    body{font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg);margin:0;padding:20px;color:#0b2545}
-    .wrap{max-width:1100px;margin:0 auto}
-    header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-    h1{font-size:20px;margin:0}
-    .card{background:var(--card);padding:18px;border-radius:12px;box-shadow:0 8px 24px rgba(12,20,36,0.06);margin-top:16px}
-    .row{display:flex;gap:12px;align-items:center}
-    .col{flex:1;min-width:160px}
-    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
-    input[type=text], input[type=file], select{width:100%;padding:10px;border-radius:8px;border:1px solid #e6eef6}
-    button{padding:10px 14px;border-radius:9px;border:0;cursor:pointer;font-weight:600}
-    .btn-primary{background:var(--accent);color:#fff}
-    .btn-ghost{background:transparent;border:1px solid #e6eef6;color:#0b2545}
-    .small{font-size:13px;color:var(--muted)}
-    table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
-    th,td{padding:8px;border-bottom:1px solid #eef3f8;text-align:left}
-    th{background:#fbfdff;font-weight:700}
-    .right{text-align:right}
-    .status{margin-top:10px;font-size:14px}
-    .progress{height:10px;background:#eef3f8;border-radius:999px;overflow:hidden;margin-top:8px}
-    .progress > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));width:0%}
-    .muted{color:var(--muted)}
-    .err{color:var(--danger);font-weight:700}
-    .ok{color:var(--success);font-weight:700}
-    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-    @media (max-width:800px){ .row{flex-direction:column} .controls{flex-direction:column} }
+    body { font-family: Arial, sans-serif; padding: 20px; background:#f3f4f6; }
+    h1 { margin-bottom: 20px; }
+    .card { background:white; padding:20px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+    input { padding:8px; width:100%; margin-bottom:10px; }
+    button { padding:10px 15px; border-radius:6px; border:0; cursor:pointer; }
+    .btn-primary { background:#2563eb; color:white; }
+    .btn-secondary { background:#e5e7eb; }
+    table { width:100%; border-collapse:collapse; margin-top:20px; background:white; }
+    th, td { padding:10px; border-bottom:1px solid #ddd; }
+    th { background:#fafafa; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div>
-        <h1>Roteirização — calcular km via planilha</h1>
-        <div class="small muted">Faça upload de uma planilha com colunas <strong>ORIGEM</strong> e <strong>DESTINO</strong> para calcular distâncias (via Google Distance Matrix).</div>
-      </div>
-      <div class="small muted">Exporta resultado em XLSX</div>
-    </header>
+  <h1>Roteirizador com Latitude/Longitude</h1>
+  <div class="card">
 
-    <section class="card" aria-label="Main">
-      <div class="row">
-        <div class="col">
-          <label for="apikey">Google API Key (Distance Matrix API habilitada)</label>
-          <input id="apikey" type="text" placeholder="Cole aqui sua Google Maps API Key" />
-        </div>
+    <h3>Carregar planilha Excel</h3>
+    <input type="file" id="fileInput" accept=".xlsx, .xls" />
+    <button class="btn-primary" onclick="processExcel()">Processar Rotas</button>
+    <button class="btn-secondary" onclick="exportarExcel()">Gerar Relatório</button>
 
-        <div class="col">
-          <label for="fileInput">Arquivo Excel (.xls / .xlsx) — primeira aba será usada</label>
-          <input id="fileInput" type="file" accept=".xls,.xlsx" />
-        </div>
+    <table id="rotasTabela">
+      <thead>
+        <tr>
+          <th>Origem</th>
+          <th>Origem (Lat)</th>
+          <th>Origem (Lng)</th>
+          <th>Destino</th>
+          <th>Destino (Lat)</th>
+          <th>Destino (Lng)</th>
+          <th>Distância (km)</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
 
-        <div style="width:220px">
-          <label for="delayMs">Delay entre chamadas (ms)</label>
-          <select id="delayMs">
-            <option value="500">500 ms</option>
-            <option value="800" selected>800 ms</option>
-            <option value="1200">1200 ms</option>
-            <option value="2000">2000 ms</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="controls">
-        <button id="btnProcess" class="btn-primary">Gerar Distâncias</button>
-        <button id="btnClear" class="btn-ghost">Limpar</button>
-        <button id="btnExport" class="btn-primary" style="display:none">Exportar Excel</button>
-      </div>
-
-      <div class="status" id="statusText"></div>
-      <div class="progress" style="display:none" id="progressBar"><i></i></div>
-
-      <table id="tblResults" style="display:none" aria-live="polite">
-        <thead>
-          <tr><th>#</th><th>Origem</th><th>Destino</th><th class="right">Distância (texto)</th><th class="right">Distância (km)</th><th class="right">Duração</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-
-    </section>
   </div>
 
-<script>
-/*
-  index.html - Roteirização via Google Distance Matrix
-  - Carrega planilha Excel (primeira aba)
-  - Procura colunas ORIGEM / DESTINO (case-insensitive) ou usa cabeçalho como indicado
-  - Faz consultas ao endpoint Distance Matrix (server-side endpoint would be recommended for production,
-    but here we do direct client-side calls; keep quota & API key security in mind)
-  - Exporta resultado em XLSX (SheetJS)
-*/
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-const fileInput = document.getElementById('fileInput');
-const apikeyEl = document.getElementById('apikey');
-const btnProcess = document.getElementById('btnProcess');
-const btnClear = document.getElementById('btnClear');
-const btnExport = document.getElementById('btnExport');
-const statusText = document.getElementById('statusText');
-const progressBar = document.getElementById('progressBar');
-const progressFill = progressBar.querySelector('i');
-const tblResults = document.getElementById('tblResults');
-const tblBody = tblResults.querySelector('tbody');
-const delaySelect = document.getElementById('delayMs');
+  <script>
+let rotas = [];
 
-let rowsInput = []; // array of objects {ORIGEM, DESTINO, ...}
-let results = []; // results per row
-
-function setStatus(msg, ok){
-  statusText.textContent = msg;
-  statusText.className = ok ? 'ok' : 'muted';
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const toRad = v => (v * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
 }
-function setError(msg){ statusText.textContent = msg; statusText.className = 'err'; }
 
-function findHeaderIndex(headers, candidates){
-  const low = headers.map(h => (h||'').toString().toLowerCase());
-  for(const c of candidates){
-    const idx = low.indexOf(c.toLowerCase());
-    if(idx !== -1) return idx;
+function processExcel() {
+  const file = document.getElementById("fileInput").files[0];
+  if (!file) {
+    alert("Selecione um arquivo Excel primeiro!");
+    return;
   }
-  return -1;
+
+  const reader = new FileReader();
+
+  reader.onload = evt => {
+    const data = new Uint8Array(evt.target.result);
+    const workbook = XLSX.read(data, { type: "array" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet);
+
+    rotas = [];
+
+    rows.forEach(r => {
+      if (r.origem_lat && r.origem_lng && r.destino_lat && r.destino_lng) {
+        const dist = haversine(r.origem_lat, r.origem_lng, r.destino_lat, r.destino_lng);
+        rotas.push({
+          origem_cidade: r.origem_cidade || "",
+          origem_lat: r.origem_lat,
+          origem_lng: r.origem_lng,
+          destino_cidade: r.destino_cidade || "",
+          destino_lat: r.destino_lat,
+          destino_lng: r.destino_lng,
+          distancia_km: dist
+        });
+      }
+    });
+
+    renderTabela();
+  };
+
+  reader.readAsArrayBuffer(file);
 }
 
-async function readExcel(file){
-  return new Promise((resolve, reject)=>{
-    const reader = new FileReader();
-    reader.onerror = (e) => reject(e);
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const wb = XLSX.read(data, {type:'array'});
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:''}); // array of arrays
-        resolve(aoa);
-      } catch(err){ reject(err) }
-    };
-    reader.readAsArrayBuffer(file);
+function renderTabela() {
+  const tbody = document.querySelector('#rotasTabela tbody');
+  tbody.innerHTML = '';
+
+  rotas.forEach(t => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${t.origem_cidade}</td>
+      <td>${t.origem_lat}</td>
+      <td>${t.origem_lng}</td>
+      <td>${t.destino_cidade}</td>
+      <td>${t.destino_lat}</td>
+      <td>${t.destino_lng}</td>
+      <td>${t.distancia_km} km</td>`;
+    tbody.appendChild(tr);
   });
 }
 
-function normalizeText(s){ return (s||'').toString().trim(); }
-function parseDistanceKm(distanceText){
-  if(!distanceText) return null;
-  // examples: "1,234 km" or "123 km" or "12 m"
-  const t = distanceText.replace(/\u00A0/g,''); // non-break space
-  if(t.toLowerCase().includes('km')){
-    const n = t.toLowerCase().replace(/\s|km/g,'').replace(',','.');
-    const v = parseFloat(n);
-    return isNaN(v) ? null : v;
-  } else if(t.toLowerCase().includes('m')) {
-    const n = t.toLowerCase().replace(/\s|m/g,'').replace(',','.');
-    const v = parseFloat(n);
-    return isNaN(v) ? null : v/1000;
-  }
-  return null;
-}
-
-async function distanceMatrix(orig, dest, apiKey){
-  // Use JSON web service for Distance Matrix
-  // Note: For production it's recommended to call server-side to hide API key.
-  const base = 'https://maps.googleapis.com/maps/api/distancematrix/json';
-  const url = `${base}?origins=${encodeURIComponent(orig)}&destinations=${encodeURIComponent(dest)}&key=${encodeURIComponent(apiKey)}&mode=driving&language=pt-BR`;
-  const resp = await fetch(url);
-  if(!resp.ok) throw new Error('HTTP ' + resp.status);
-  const json = await resp.json();
-  return json;
-}
-
-async function processAll(apiKey, delayMs){
-  tblBody.innerHTML = '';
-  results = [];
-  tblResults.style.display = 'table';
-  progressBar.style.display = 'block';
-  progressFill.style.width = '0%';
-  const total = rowsInput.length;
-  let processed = 0;
-  let totalKm = 0;
-
-  for(let i=0;i<rowsInput.length;i++){
-    const row = rowsInput[i];
-    let orig = normalizeText(row.ORIGEM || row.Origem || '');
-    let dest = normalizeText(row.DESTINO || row.Destino || '');
-    if(!orig || !dest){
-      // try other header names heuristics
-      orig = normalizeText(row.origin || row.from || row.origem || row.Origem || row.ORIGEM || '');
-      dest = normalizeText(row.destination || row.to || row.destino || row.Destino || row.DESTINO || '');
-    }
-
-    let distText = '';
-    let durText = '';
-    let distKm = null;
-    let status = 'OK';
-
-    if(!orig || !dest){
-      status = 'skip';
-      distText = 'Faltam ORIGEM/DESTINO';
-    } else {
-      try {
-        setStatus(`Consultando ${i+1}/${total}: ${orig} → ${dest}`, true);
-        const json = await distanceMatrix(orig, dest, apiKey);
-        const element = json && json.rows && json.rows[0] && json.rows[0].elements && json.rows[0].elements[0];
-        if(element && element.status === 'OK'){
-          distText = element.distance.text || '';
-          durText = element.duration ? element.duration.text : '';
-          distKm = parseDistanceKm(distText);
-          if(distKm !== null) totalKm += distKm;
-        } else {
-          status = 'ERRO';
-          distText = (element && element.status) ? element.status : 'N/D';
-        }
-      } catch(err){
-        status = 'ERRO';
-        distText = 'Erro API';
-        console.error('Erro API:', err);
-      }
-    }
-
-    // render row
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${i+1}</td>
-                    <td>${escapeHtml(orig)}</td>
-                    <td>${escapeHtml(dest)}</td>
-                    <td class="right">${distText || '-'}</td>
-                    <td class="right">${distKm!==null ? distKm.toFixed(6) : '-'}</td>
-                    <td class="right">${durText || '-'}</td>`;
-    tblBody.appendChild(tr);
-
-    results.push({
-      index: i+1, origem: orig, destino: dest,
-      distancia_text: distText, distancia_km: distKm, duracao_text: durText, status
-    });
-
-    processed++;
-    const pct = Math.round((processed/total)*100);
-    progressFill.style.width = pct + '%';
-
-    // delay between calls
-    await new Promise(r => setTimeout(r, delayMs));
+function exportarExcel() {
+  if (rotas.length === 0) {
+    alert("Nenhuma rota processada para exportar!");
+    return;
   }
 
-  setStatus(`Concluído — ${results.length} rotas processadas. Distância total (soma km): ${totalKm.toFixed(3)} km`, true);
-  progressFill.style.width = '100%';
-  progressBar.style.display = 'none';
-  btnExport.style.display = 'inline-block';
-}
-
-btnProcess.addEventListener('click', async ()=>{
-  const apiKey = (apikeyEl.value||'').trim();
-  const file = fileInput.files[0];
-  if(!file) { setError('Selecione uma planilha .xls/.xlsx'); return; }
-  if(!apiKey) { setError('Cole sua Google API Key (Distance Matrix API habilitada)'); return; }
-
-  setStatus('Lendo arquivo...', true);
-  try{
-    const aoa = await readExcel(file); // array of arrays
-    if(!aoa || aoa.length < 2){ setError('Planilha inválida ou sem conteúdo'); return; }
-
-    // detect headers
-    const headerRow = aoa[0].map(h => (h===null || h===undefined) ? '' : String(h).trim());
-    // create array of objects keyed by header
-    rowsInput = aoa.slice(1).map(r => {
-      const obj = {};
-      for(let i=0;i<headerRow.length;i++){
-        obj[headerRow[i]||('Col'+(i+1))] = (r[i] === undefined ? '' : r[i]);
-      }
-      return obj;
-    });
-
-    // try to map to ORIGEM/DESTINO using header names
-    const hLow = headerRow.map(h=>h.toLowerCase());
-    let idxOrig = findHeaderIndex(headerRow, ['origem','origin','from','origem/rua','endereco_origem','address_from']);
-    let idxDest = findHeaderIndex(headerRow, ['destino','destination','to','destino/rua','endereco_destino','address_to']);
-    // If not found, try common uppercase names
-    if(idxOrig === -1) idxOrig = findHeaderIndex(headerRow, ['ORIGEM','ORIGIN','FROM']);
-    if(idxDest === -1) idxDest = findHeaderIndex(headerRow, ['DESTINO','DESTINATION','TO']);
-
-    // Normalize into rowsInput with ORIGEM / DESTINO keys for easier processing
-    rowsInput = rowsInput.map(r => {
-      const keys = Object.keys(r);
-      const out = {};
-      // copy all original data
-      keys.forEach(k=> out[k] = r[k]);
-      // create standard keys
-      if(idxOrig !== -1) out['ORIGEM'] = r[ headerRow[idxOrig] ];
-      else if(r['ORIGEM']===undefined && r['Origem']!==undefined) out['ORIGEM'] = r['Origem'];
-      if(idxDest !== -1) out['DESTINO'] = r[ headerRow[idxDest] ];
-      else if(r['DESTINO']===undefined && r['Destino']!==undefined) out['DESTINO'] = r['Destino'];
-      return out;
-    });
-
-    // Quick check: if no ORIGEM/DESTINO available, notify user
-    const missing = rowsInput.every(r=> !r.ORIGEM || !r.DESTINO);
-    if(missing){
-      setError('Não foi possível detectar colunas ORIGEM/DESTINO. Verifique o cabeçalho da planilha.');
-      return;
-    }
-
-    // start processing
-    setStatus('Iniciando consultas... (respeitando delay entre chamadas)', true);
-    const delayMs = parseInt(delaySelect.value,10) || 800;
-    await processAll(apiKey, delayMs);
-
-  }catch(err){
-    console.error(err);
-    setError('Erro ao processar arquivo: ' + (err && err.message ? err.message : String(err)));
-  }
-});
-
-btnClear.addEventListener('click', ()=>{
-  fileInput.value = '';
-  apikeyEl.value = '';
-  rowsInput = [];
-  results = [];
-  tblBody.innerHTML = '';
-  tblResults.style.display = 'none';
-  btnExport.style.display = 'none';
-  setStatus('Tela limpa.', true);
-  progressBar.style.display = 'none';
-  progressFill.style.width = '0%';
-});
-
-btnExport.addEventListener('click', ()=>{
-  if(!results || results.length === 0) { alert('Nenhum resultado para exportar'); return; }
-  // Prepare rows for sheet
-  const out = results.map(r => ({
-    Index: r.index,
-    Origem: r.origem,
-    Destino: r.destino,
-    Distancia_texto: r.distancia_text,
-    Distancia_km: r.distancia_km !== null ? Number(r.distancia_km.toFixed(6)) : '',
-    Duracao: r.duracao_text,
-    Status: r.status
-  }));
-  const ws = XLSX.utils.json_to_sheet(out);
+  const ws = XLSX.utils.json_to_sheet(rotas);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'rotas');
-  // resumo
-  const totalKm = out.reduce((s,x)=> s + (x.Distancia_km||0), 0);
-  const resumo = [{Chave:'rotas_processadas',Valor: out.length}, {Chave:'distancia_total_km',Valor: Number(totalKm.toFixed(6))}];
-  const ws2 = XLSX.utils.json_to_sheet(resumo);
-  XLSX.utils.book_append_sheet(wb, ws2, 'resumo');
-  XLSX.writeFile(wb, 'resultado_rotas.xlsx');
-});
+  XLSX.utils.book_append_sheet(wb, ws, "Rotas Processadas");
+  XLSX.writeFile(wb, "rotas_processadas.xlsx");
+}
 
-// helper to escape HTML in table display
-function escapeHtml(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  </script>
 
-</script>
 </body>
 </html>
