@@ -26,6 +26,13 @@
     <button class="btn-primary" onclick="processarRotas()">Processar Rotas</button>
     <button class="btn-secondary" onclick="exportarExcel()">Gerar Relatório</button>
 
+    <!-- Barra de progresso corrigida -->
+    <div style="width:100%; background:#ddd; height:22px; border-radius:5px; margin-top:10px;">
+      <div id="progress" style="height:100%; width:0%; background:#2563eb; color:white; text-align:center; border-radius:5px;">
+        0%
+      </div>
+    </div>
+
     <table id="rotasTabela">
       <thead>
         <tr>
@@ -85,17 +92,26 @@ function processarRotas(){
     (async () => {
       for (const r of rows) {
         if (r.CidadeOrigem && r.CidadeDestino && r.LatitudeOrigem && r.LongitudeOrigem && r.LatitudeDestino && r.LongitudeDestino) {
-          const dist = await getDrivingDistance(r.LatitudeOrigem, r.LongitudeOrigem, r.LatitudeDestino, r.LongitudeDestino);
+
+          // Conversão vírgula → ponto
+          const latO = parseFloat(r.LatitudeOrigem.toString().replace(",", "."));
+          const lngO = parseFloat(r.LongitudeOrigem.toString().replace(",", "."));
+          const latD = parseFloat(r.LatitudeDestino.toString().replace(",", "."));
+          const lngD = parseFloat(r.LongitudeDestino.toString().replace(",", "."));
+
+          const dist = await getDrivingDistance(latO, lngO, latD, lngD);
+
           transactions.push({
             origem: r.CidadeOrigem,
+            lat_o: latO,
+            lng_o: lngO,
             destino: r.CidadeDestino,
-            lat_o: r.LatitudeOrigem,
-            lng_o: r.LongitudeOrigem,
-            lat_d: r.LatitudeDestino,
-            lng_d: r.LongitudeDestino,
+            lat_d: latD,
+            lng_d: lngD,
             distancia: dist
           });
         }
+
         count++;
         let pct = Math.round((count / total) * 100);
         progress.style.width = pct + "%";
@@ -114,9 +130,9 @@ function render() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${t.origem}</td>
-      <td>${t.destino}</td>
       <td>${t.lat_o}</td>
       <td>${t.lng_o}</td>
+      <td>${t.destino}</td>
       <td>${t.lat_d}</td>
       <td>${t.lng_d}</td>
       <td>${t.distancia} km</td>`;
