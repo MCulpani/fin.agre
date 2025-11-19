@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Roteirização por Latitude/Longitude</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background:#f3f4f6; }
+    h1 { margin-bottom: 20px; }
+    .card { background:white; padding:20px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+    input { padding:8px; width:100%; margin-bottom:10px; }
+    button { padding:10px 15px; border-radius:6px; border:0; cursor:pointer; }
+    .btn-primary { background:#2563eb; color:white; }
+    .btn-secondary { background:#e5e7eb; }
+    table { width:100%; border-collapse:collapse; margin-top:20px; background:white; }
+    th, td { padding:10px; border-bottom:1px solid #ddd; }
+    th { background:#fafafa; }
+  </style>
+</head>
+<body>
+  <h1>Roteirizador com Latitude/Longitude</h1>
+  <div class="card">
+
+    <h3>Carregar planilha Excel</h3>
+    <input type="file" id="fileInput" accept=".xlsx, .xls" />
+    <button class="btn-primary" onclick="processarRotas()">Processar Rotas</button>
+    <button class="btn-secondary" onclick="exportarExcel()">Gerar Relatório</button>
+
+    <!-- Barra de progresso corrigida -->
+    <div style="width:100%; background:#ddd; height:22px; border-radius:5px; margin-top:10px;">
+      <div id="progress" style="height:100%; width:0%; background:#2563eb; color:white; text-align:center; border-radius:5px;">
+        0%
+      </div>
+    </div>
+
+    <table id="rotasTabela">
+      <thead>
+        <tr>
+          <th>Origem</th>
+          <th>Origem (Lat)</th>
+          <th>Origem (Lng)</th>
+          <th>Destino</th>
+          <th>Destino (Lat)</th>
+          <th>Destino (Lng)</th>
+          <th>Distância (km)</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <script>
+let transactions = [];
+
+async function getDrivingDistance(lat1, lon1, lat2, lon2) {
+  const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.routes && data.routes.length > 0) {
+      return Math.round(data.routes[0].distance / 1000);
+    }
+  } catch (e) {
+    console.error("Erro OSRM", e);
+  }
+  return null;
+}
+
+function parseNumber(value){
+  if (!value) return null;
+  return parseFloat(String(value).replace(',', '.'));
+}
+
+function processarRotas(){
+  const file = document.getElementById("fileInput").files[0];
+  if (!file) { alert("Selecione um arquivo Excel!"); return; }
+
+  const progress = document.getElementById("progress");
+  progress.style.width = "0%";
+  progress.textContent = "0%";
+
+  const reader = new FileReader();
+  reader.onload = evt => {
+    const data = new Uint8Array(evt.target.result);
+    const workbook = XLSX.read(data, { type: "array" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    let rows = XLSX.utils.sheet_to_json(sheet);
+
+    transactions = [];
+
+    let total = rows.length;
+    let count = 0;
+
+    (async () => {
+      for (const r of rows) {
+        const origem = r.origem_cidade;
+        const destino = r.destino_cidade;
+        const lat_o = parseNumber(r.origem_lat);
+        const lng_o = parseNumber(r.origem_lng);
+        const lat_d = parseNumber(r.destino_lat);
+        const lng_d = parseNumber(r.destino_lng);
+
+        if (origem && destino && lat_o && lng_o && lat_d && lng_d) {
+          const dist = await getDrivingDistance(lat_o, lng_o, lat_d, lng_d);
+          transactions.push({ origem, destino, lat_o, lng_o, lat_d, lng_d, distancia: dist });
+        }
+        count++;
+        let pct = Math.round((count / total) * 100);
+        progress.style.width = pct + "%";
+        progress.textContent = pct + "%";
+      }
+      render();
+    })();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function render() {
+  const tbody = document.querySelector('#rotasTabela tbody');
+  tbody.innerHTML = '';
+  transactions.forEach(t => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${t.origem}</td>
+      <td>${t.lat_o}</td>
+      <td>${t.lng_o}</td>
+      <td>${t.destino}</td>
+      <td>${t.lat_d}</td>
+      <td>${t.lng_d}</td>
+      <td>${t.distancia} km</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function exportarExcel(){
+  const ws = XLSX.utils.json_to_sheet(transactions);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Rotas");
+  XLSX.writeFile(wb, "rotas_processadas.xlsx");
+}
+</script>
+
+</body>
+</html>
