@@ -135,7 +135,7 @@ function render() {
       <td>${t.destino}</td>
       <td>${t.lat_d}</td>
       <td>${t.lng_d}</td>
-      <td>${t.distancia} km</td>`;
+      <td>${t.distancia ? t.distancia + ' km' : 'Erro'}</td>`;
     tbody.appendChild(tr);
   });
 }
