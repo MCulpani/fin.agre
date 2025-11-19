@@ -75,22 +75,19 @@ function processExcel() {
     rotas = [];
 
     rows.forEach(r => {
-      if (r.origem_lat && r.origem_lng && r.destino_lat && r.destino_lng) {
-        const dist = haversine(r.origem_lat, r.origem_lng, r.destino_lat, r.destino_lng);
-        rotas.push({
-          origem_cidade: r.origem_cidade || "",
-          origem_lat: r.origem_lat,
-          origem_lng: r.origem_lng,
-          destino_cidade: r.destino_cidade || "",
-          destino_lat: r.destino_lat,
-          destino_lng: r.destino_lng,
+      if (r.CidadeOrigem && r.LatitudeOrigem && r.LongitudeOrigem && r.CidadeDestino && r.LatitudeDestino && r.LongitudeDestino) {
+        const dist = haversine(r.LatitudeOrigem, r.LongitudeOrigem, r.LatitudeDestino, r.LongitudeDestino);
+        transactions.push({
+          origem_cidade: r.CidadeOrigem,
+          origem_lat: r.LatitudeOrigem,
+          origem_lng: r.LongitudeOrigem,
+          destino_cidade: r.CidadeDestino,
+          destino_lat: r.LatitudeDestino,
+          destino_lng: r.LongitudeDestino,
           distancia_km: dist
         });
       }
     });
-
-    renderTabela();
-  };
 
   reader.readAsArrayBuffer(file);
 }
