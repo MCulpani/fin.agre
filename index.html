@@ -42,67 +42,70 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <script>
-    let rotas = [];
+let transactions = [];
 
-    function calcularDistancia(lat1, lon1, lat2, lon2) {
-      const R = 6371; // raio da Terra em km
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
-                Math.sin(dLon/2) * Math.sin(dLon/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      return (R * c).toFixed(2);
-    }
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const toRad = v => (v * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+}
 
-    function processExcel() {
-      const file = document.getElementById('fileInput').files[0];
-      if (!file) return alert("Selecione um arquivo Excel primeiro");
-
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(sheet);
-
-        rotas = json.map(r => {
-          const dist = calcularDistancia(r.Lat_Origem, r.Lon_Origem, r.Lat_Destino, r.Lon_Destino);
-          return {
-            origem: `${r.Lat_Origem}, ${r.Lon_Origem}`,
-            destino: `${r.Lat_Destino}, ${r.Lon_Destino}`,
-            distancia: dist
-          };
+document.getElementById("fileInput").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = evt => {
+    const data = new Uint8Array(evt.target.result);
+    const workbook = XLSX.read(data, { type: "array" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet);
+    transactions = [];
+    rows.forEach(r => {
+      if (r.origem_lat && r.origem_lng && r.destino_lat && r.destino_lng) {
+        const dist = haversine(r.origem_lat, r.origem_lng, r.destino_lat, r.destino_lng);
+        transactions.push({
+          origem_cidade: r.origem_cidade || "",
+          origem_lat: r.origem_lat,
+          origem_lng: r.origem_lng,
+          destino_cidade: r.destino_cidade || "",
+          destino_lat: r.destino_lat,
+          destino_lng: r.destino_lng,
+          distancia_km: dist
         });
+      }
+    });
+    render();
+  };
+  reader.readAsArrayBuffer(file);
+});
 
-        renderTabela();
-      };
-      reader.readAsArrayBuffer(file);
-    }
+function render() {
+  const tbody = document.querySelector('#txTable tbody');
+  tbody.innerHTML = '';
+  transactions.forEach(t => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${t.origem_cidade}</td>
+      <td>${t.origem_lat}</td>
+      <td>${t.origem_lng}</td>
+      <td>${t.destino_cidade}</td>
+      <td>${t.destino_lat}</td>
+      <td>${t.destino_lng}</td>
+      <td>${t.distancia_km} km</td>`;
+    tbody.appendChild(tr);
+  });
+}
 
-    function renderTabela() {
-      const tbody = document.querySelector('#rotasTabela tbody');
-      tbody.innerHTML = '';
-
-      rotas.forEach(r => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${r.origem}</td>
-          <td>${r.destino}</td>
-          <td>${r.distancia} km</td>`;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function exportarExcel() {
-      if (rotas.length === 0) return alert("Nenhuma rota processada");
-
-      const ws = XLSX.utils.json_to_sheet(rotas);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Rotas');
-      XLSX.writeFile(wb, 'relatorio_rotas.xlsx');
-    }
-  </script>
+document.getElementById("exportExcel").addEventListener("click", () => {
+  const ws = XLSX.utils.json_to_sheet(transactions);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Rotas");
+  XLSX.writeFile(wb, "rotas_processadas.xlsx");
+});
+</script>
 
 </body>
 </html>
