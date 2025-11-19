@@ -12,6 +12,15 @@
     button { padding:10px 15px; border-radius:6px; border:0; cursor:pointer; }
     .btn-primary { background:#2563eb; color:white; }
     .btn-secondary { background:#e5e7eb; }
+
+    .progress-container{
+      width:100%; background:#ddd; height:22px; border-radius:8px; margin-top:10px;
+    }
+    .progress-bar{
+      width:0%; height:100%; background:#2563eb; color:white; 
+      text-align:center; border-radius:8px; font-size:14px;
+    }
+
     table { width:100%; border-collapse:collapse; margin-top:20px; background:white; }
     th, td { padding:10px; border-bottom:1px solid #ddd; }
     th { background:#fafafa; }
@@ -23,6 +32,14 @@
 
     <h3>Carregar planilha Excel</h3>
     <input type="file" id="fileInput" accept=".xlsx, .xls" />
+
+    <!-- Barra de progresso -->
+    <div class="progress-container">
+      <div class="progress-bar" id="progress">0%</div>
+    </div>
+
+    <br>
+
     <button class="btn-primary" onclick="processarRotas()">Processar Rotas</button>
     <button class="btn-secondary" onclick="exportarExcel()">Gerar Relatório</button>
 
@@ -78,18 +95,23 @@ function processarRotas(){
     let count = 0;
 
     rows.forEach(r => {
-      if (r.CidadeOrigem && r.CidadeDestino && r.LatitudeOrigem && r.LongitudeOrigem && r.LatitudeDestino && r.LongitudeDestino) {
+      if (
+        r.CidadeOrigem && r.CidadeDestino &&
+        r.LatitudeOrigem && r.LongitudeOrigem &&
+        r.LatitudeDestino && r.LongitudeDestino
+      ) {
         const dist = haversine(r.LatitudeOrigem, r.LongitudeOrigem, r.LatitudeDestino, r.LongitudeDestino);
         transactions.push({
           origem: r.CidadeOrigem,
-          destino: r.CidadeDestino,
           lat_o: r.LatitudeOrigem,
           lng_o: r.LongitudeOrigem,
+          destino: r.CidadeDestino,
           lat_d: r.LatitudeDestino,
           lng_d: r.LongitudeDestino,
           distancia: dist
         });
       }
+
       count++;
       let pct = Math.round((count / total) * 100);
       progress.style.width = pct + "%";
@@ -98,19 +120,21 @@ function processarRotas(){
 
     render();
   };
+
   reader.readAsArrayBuffer(file);
 }
 
 function render() {
   const tbody = document.querySelector('#rotasTabela tbody');
   tbody.innerHTML = '';
+
   transactions.forEach(t => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${t.origem}</td>
-      <td>${t.destino}</td>
       <td>${t.lat_o}</td>
       <td>${t.lng_o}</td>
+      <td>${t.destino}</td>
       <td>${t.lat_d}</td>
       <td>${t.lng_d}</td>
       <td>${t.distancia} km</td>`;
