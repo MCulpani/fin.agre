@@ -23,7 +23,7 @@
 
     <h3>Carregar planilha Excel</h3>
     <input type="file" id="fileInput" accept=".xlsx, .xls" />
-    <button class="btn-primary" onclick="processExcel()">Processar Rotas</button>
+    <button class="btn-primary" onclick="processarRotas()">Processar Rotas</button>
     <button class="btn-secondary" onclick="exportarExcel()">Gerar Relatório</button>
 
     <table id="rotasTabela">
@@ -57,7 +57,7 @@ function haversine(lat1, lon1, lat2, lon2) {
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
 }
 
-function processExcel(){
+function processarRotas(){
   const file = document.getElementById("fileInput").files[0];
   if (!file) { alert("Selecione um arquivo Excel!"); return; }
 
