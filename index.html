@@ -12,15 +12,9 @@
     button { padding:10px 15px; border-radius:6px; border:0; cursor:pointer; }
     .btn-primary { background:#2563eb; color:white; }
     .btn-secondary { background:#e5e7eb; }
-
-    .progress-container{ width:100%; background:#eee; height:26px; border-radius:8px; margin-top:10px; overflow:hidden }
-    .progress-bar{ width:0%; height:100%; background:linear-gradient(90deg,#2563eb,#0ea5a4); color:white; text-align:center; line-height:26px; font-weight:700 }
-
     table { width:100%; border-collapse:collapse; margin-top:20px; background:white; }
     th, td { padding:10px; border-bottom:1px solid #ddd; }
     th { background:#fafafa; }
-    .muted{color:#6b7280;font-size:13px}
-    @media (max-width:700px){ table, thead, tbody, th, td, tr { display:block } td{ padding:8px } }
   </style>
 </head>
 <body>
@@ -28,22 +22,11 @@
   <div class="card">
 
     <h3>Carregar planilha Excel</h3>
-    <div class="muted">A planilha deve conter colunas com estes cabeçalhos (case-sensitive):<br>
-      <strong>origem_cidade, origem_lat, origem_lng, destino_cidade, destino_lat, destino_lng</strong>
-    </div>
     <input type="file" id="fileInput" accept=".xlsx, .xls" />
+    <button class="btn-primary" onclick="processarRotas()">Processar Rotas</button>
+    <button class="btn-secondary" onclick="exportarExcel()">Gerar Relatório</button>
 
-    <!-- Barra de progresso -->
-    <div class="progress-container" aria-hidden="true">
-      <div class="progress-bar" id="progress">0%</div>
-    </div>
-
-    <br>
-
-    <button class="btn-primary" id="btnProcess">Processar Rotas</button>
-    <button class="btn-secondary" id="btnExport">Gerar Relatório</button>
-
-    <table id="rotasTabela" aria-live="polite">
+    <table id="rotasTabela">
       <thead>
         <tr>
           <th>Origem</th>
@@ -61,141 +44,93 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
   <script>
-    // estado
-    let rotas = [];
+let transactions = [];
 
-    function parseNumberPossiblyComma(v){
-      if(v === null || v === undefined) return NaN;
-      const s = String(v).trim();
-      if(s === '') return NaN;
-      // replace comma with dot and remove spaces
-      const norm = s.replace(/\s+/g,'').replace(',','.');
-      const n = parseFloat(norm);
-      return isNaN(n) ? NaN : n;
+async function getDrivingDistance(lat1, lon1, lat2, lon2) {
+  const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.routes && data.routes.length > 0) {
+      return Math.round(data.routes[0].distance / 1000);
     }
+  } catch (e) {
+    console.error("Erro OSRM", e);
+  }
+  return null;
+}
 
-    function haversine(lat1, lon1, lat2, lon2) {
-      const R = 6371; // km
-      const toRad = v => (v * Math.PI) / 180;
-      const dLat = toRad(lat2 - lat1);
-      const dLon = toRad(lon2 - lon1);
-      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      return Number((R * c).toFixed(3));
-    }
+function processarRotas(){
+  const file = document.getElementById("fileInput").files[0];
+  if (!file) { alert("Selecione um arquivo Excel!"); return; }
 
-    function setProgress(pct){
-      const bar = document.getElementById('progress');
-      bar.style.width = pct + '%';
-      bar.textContent = pct + '%';
-    }
+  const progress = document.getElementById("progress");
+  progress.style.width = "0%";
+  progress.textContent = "0%";
 
-    async function processarRotas(){
-      const input = document.getElementById('fileInput');
-      const file = input.files[0];
-      if(!file){ alert('Selecione um arquivo Excel (.xls/.xlsx)'); return; }
+  const reader = new FileReader();
+  reader.onload = evt => {
+    const data = new Uint8Array(evt.target.result);
+    const workbook = XLSX.read(data, { type: "array" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet);
 
-      // reset
-      rotas = [];
-      renderTabela();
-      setProgress(0);
+    transactions = [];
 
-      const reader = new FileReader();
-      reader.onload = e => {
-        try{
-          const data = new Uint8Array(e.target.result);
-          const wb = XLSX.read(data, {type:'array'});
-          const sheet = wb.Sheets[wb.SheetNames[0]];
-          const rows = XLSX.utils.sheet_to_json(sheet, {defval: ''});
+    let total = rows.length;
+    let count = 0;
 
-          if(!rows || rows.length === 0){ alert('Planilha vazia'); return; }
-
-          const total = rows.length;
-          let processed = 0;
-
-          for(const r of rows){
-            // suportar várias variações de cabeçalho (cases e underscores)
-            const origemCidade = r.origem_cidade ?? r.Origem ?? r.CidadeOrigem ?? r['origem cidade'] ?? '';
-            const destinoCidade = r.destino_cidade ?? r.Destino ?? r.CidadeDestino ?? r['destino cidade'] ?? '';
-
-            const latO = parseNumberPossiblyComma(r.origem_lat ?? r.LatitudeOrigem ?? r['origem_lat'] ?? r['Origem Lat']);
-            const lngO = parseNumberPossiblyComma(r.origem_lng ?? r.LongitudeOrigem ?? r['origem_lng'] ?? r['Origem Lng']);
-            const latD = parseNumberPossiblyComma(r.destino_lat ?? r.LatitudeDestino ?? r['destino_lat'] ?? r['Destino Lat']);
-            const lngD = parseNumberPossiblyComma(r.destino_lng ?? r.LongitudeDestino ?? r['destino_lng'] ?? r['Destino Lng']);
-
-            if(!isNaN(latO) && !isNaN(lngO) && !isNaN(latD) && !isNaN(lngD)){
-              const dist = haversine(latO, lngO, latD, lngD);
-              rotas.push({
-                origem: origemCidade || '',
-                origem_lat: latO,
-                origem_lng: lngO,
-                destino: destinoCidade || '',
-                destino_lat: latD,
-                destino_lng: lngD,
-                distancia_km: dist
-              });
-            } else {
-              // se faltar coords, ainda adiciona registro com NaN para visualizar erro
-              rotas.push({
-                origem: origemCidade || '',
-                origem_lat: isNaN(latO) ? '' : latO,
-                origem_lng: isNaN(lngO) ? '' : lngO,
-                destino: destinoCidade || '',
-                destino_lat: isNaN(latD) ? '' : latD,
-                destino_lng: isNaN(lngD) ? '' : lngD,
-                distancia_km: null
-              });
-            }
-
-            processed++;
-            setProgress(Math.round((processed/total)*100));
-          }
-
-          renderTabela();
-        }catch(err){
-          console.error(err);
-          alert('Erro ao ler a planilha: ' + err.message);
+    (async () => {
+      for (const r of rows) {
+        if (r.CidadeOrigem && r.CidadeDestino && r.LatitudeOrigem && r.LongitudeOrigem && r.LatitudeDestino && r.LongitudeDestino) {
+          const dist = await getDrivingDistance(r.LatitudeOrigem, r.LongitudeOrigem, r.LatitudeDestino, r.LongitudeDestino);
+          transactions.push({
+            origem: r.CidadeOrigem,
+            destino: r.CidadeDestino,
+            lat_o: r.LatitudeOrigem,
+            lng_o: r.LongitudeOrigem,
+            lat_d: r.LatitudeDestino,
+            lng_d: r.LongitudeDestino,
+            distancia: dist
+          });
         }
-      };
-      reader.readAsArrayBuffer(file);
-    }
+        count++;
+        let pct = Math.round((count / total) * 100);
+        progress.style.width = pct + "%";
+        progress.textContent = pct + "%";
+      }
+      render();
+    })();
+  };
+  reader.readAsArrayBuffer(file);
+}
 
-    function renderTabela(){
-      const tbody = document.querySelector('#rotasTabela tbody');
-      tbody.innerHTML = '';
-      rotas.forEach(r => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${escapeHtml(r.origem)}</td>
-          <td>${r.origem_lat !== '' ? r.origem_lat : ''}</td>
-          <td>${r.origem_lng !== '' ? r.origem_lng : ''}</td>
-          <td>${escapeHtml(r.destino)}</td>
-          <td>${r.destino_lat !== '' ? r.destino_lat : ''}</td>
-          <td>${r.destino_lng !== '' ? r.destino_lng : ''}</td>
-          <td>${r.distancia_km !== null ? r.distancia_km + ' km' : '—'}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
+function render() {
+  const tbody = document.querySelector('#rotasTabela tbody');
+  tbody.innerHTML = '';
+  transactions.forEach(t => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${t.origem}</td>
+      <td>${t.destino}</td>
+      <td>${t.lat_o}</td>
+      <td>${t.lng_o}</td>
+      <td>${t.lat_d}</td>
+      <td>${t.lng_d}</td>
+      <td>${t.distancia} km</td>`;
+    tbody.appendChild(tr);
+  });
+}
 
-    function exportarExcel(){
-      if(!rotas || rotas.length === 0){ alert('Nenhuma rota processada para exportar'); return; }
-      const ws = XLSX.utils.json_to_sheet(rotas);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Rotas');
-      // resumo
-      const totalKm = rotas.reduce((s,r)=> s + (r.distancia_km || 0), 0);
-      const resumo = [{chave: 'rotas_processadas', valor: rotas.length}, {chave: 'distancia_total_km', valor: Number(totalKm.toFixed(3))}];
-      const ws2 = XLSX.utils.json_to_sheet(resumo);
-      XLSX.utils.book_append_sheet(wb, ws2, 'Resumo');
-      XLSX.writeFile(wb, 'rotas_processadas.xlsx');
-    }
+function exportarExcel(){
+  const ws = XLSX.utils.json_to_sheet(transactions);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Rotas");
+  XLSX.writeFile(wb, "rotas_processadas.xlsx");
+}
+</script>
 
-    function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-    document.getElementById('btnProcess').addEventListener('click', processarRotas);
-    document.getElementById('btnExport').addEventListener('click', exportarExcel);
-  </script>
 </body>
 </html>
