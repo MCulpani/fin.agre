@@ -3,114 +3,106 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Roteirização Automática — Cálculo de Distâncias</title>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <title>Roteirização por Latitude/Longitude</title>
   <style>
-    body{font-family:Arial;background:#f3f4f6;margin:0;padding:20px;}
-    h1{margin-bottom:20px;}
-    .card{background:white;padding:20px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,0.1);} 
-    input{padding:8px;width:100%;margin-bottom:12px;} 
-    button{padding:10px 15px;border:0;border-radius:6px;cursor:pointer;margin-right:6px;} 
-    .btn{background:#2563eb;color:white;} 
-    .btn-secondary{background:#e5e7eb;color:#111;} 
-    table{width:100%;margin-top:20px;border-collapse:collapse;background:white;} 
-    th,td{padding:10px;border-bottom:1px solid #ddd;} 
+    body { font-family: Arial, sans-serif; padding: 20px; background:#f3f4f6; }
+    h1 { margin-bottom: 20px; }
+    .card { background:white; padding:20px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+    input { padding:8px; width:100%; margin-bottom:10px; }
+    button { padding:10px 15px; border-radius:6px; border:0; cursor:pointer; }
+    .btn-primary { background:#2563eb; color:white; }
+    .btn-secondary { background:#e5e7eb; }
+    table { width:100%; border-collapse:collapse; margin-top:20px; background:white; }
+    th, td { padding:10px; border-bottom:1px solid #ddd; }
+    th { background:#fafafa; }
   </style>
 </head>
 <body>
-  <h1>Roteirização Automática via Google Distance Matrix</h1>
-
+  <h1>Roteirizador com Latitude/Longitude</h1>
   <div class="card">
-    <label>Sua Google API Key</label>
-    <input id="apikey" placeholder="Cole aqui sua Google API Key" />
 
-    <label>Importar planilha Excel (com coluna ORIGEM e DESTINO)</label>
-    <input type="file" id="fileInput" accept=".xlsx,.xls" />
+    <h3>Carregar planilha Excel</h3>
+    <input type="file" id="fileInput" accept=".xlsx, .xls" />
+    <button class="btn-primary" onclick="processExcel()">Processar Rotas</button>
+    <button class="btn-secondary" onclick="exportarExcel()">Gerar Relatório</button>
 
-    <button class="btn" onclick="processarPlanilha()">Gerar Distâncias</button>
-    <button class="btn-secondary" onclick="limpar()">Limpar Tudo</button>
-
-    <table id="resultado" style="display:none;">
+    <table id="rotasTabela">
       <thead>
         <tr>
-          <th>Origem</th><th>Destino</th><th>Distância (km)</th><th>Duração</th>
+          <th>Origem (Lat, Lon)</th>
+          <th>Destino (Lat, Lon)</th>
+          <th>Distância (km)</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
 
-    <button id="exportar" class="btn" style="display:none;" onclick="exportarExcel()">Exportar Excel</button>
   </div>
 
-<script>
-let dadosRotas = [];
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-function limpar(){
-  dadosRotas = [];
-  document.querySelector('#resultado').style.display='none';
-  document.querySelector('#resultado tbody').innerHTML='';
-  document.querySelector('#exportar').style.display='none';
-}
+  <script>
+    let rotas = [];
 
-async function buscarDistancia(origem, destino, apiKey){
-  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origem)}&destinations=${encodeURIComponent(destino)}&key=${apiKey}&mode=driving`;
-  const resp = await fetch(url);
-  const data = await resp.json();
-
-  if(data.rows && data.rows[0].elements[0].status === "OK"){
-    return {
-      distancia: data.rows[0].elements[0].distance.text,
-      duracao: data.rows[0].elements[0].duration.text
-    };
-  }
-  return { distancia:"Erro", duracao:"Erro" };
-}
-
-function processarPlanilha(){
-  const file = document.getElementById('fileInput').files[0];
-  const apiKey = document.getElementById('apikey').value.trim();
-  if(!file) return alert("Selecione uma planilha.");
-  if(!apiKey) return alert("Insira sua Google API Key.");
-
-  const reader = new FileReader();
-
-  reader.onload = async (e)=>{
-    const data = new Uint8Array(e.target.result);
-    const wb = XLSX.read(data,{type:'array'});
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(ws);
-
-    dadosRotas = [];
-    document.querySelector('#resultado tbody').innerHTML = '';
-
-    for(const linha of json){
-      const origem = linha.ORIGEM;
-      const destino = linha.DESTINO;
-      if(!origem || !destino) continue;
-
-      const r = await buscarDistancia(origem, destino, apiKey);
-
-      dadosRotas.push({ origem, destino, distancia:r.distancia, duracao:r.duracao });
-
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${origem}</td><td>${destino}</td><td>${r.distancia}</td><td>${r.duracao}</td>`;
-      document.querySelector('#resultado tbody').appendChild(tr);
+    function calcularDistancia(lat1, lon1, lat2, lon2) {
+      const R = 6371; // raio da Terra em km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return (R * c).toFixed(2);
     }
 
-    document.querySelector('#resultado').style.display='table';
-    document.querySelector('#exportar').style.display='inline-block';
-  };
+    function processExcel() {
+      const file = document.getElementById('fileInput').files[0];
+      if (!file) return alert("Selecione um arquivo Excel primeiro");
 
-  reader.readAsArrayBuffer(file);
-}
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet);
 
-function exportarExcel(){
-  const ws = XLSX.utils.json_to_sheet(dadosRotas);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Rotas');
-  XLSX.writeFile(wb, 'resultado_rotas.xlsx');
-}
-</script>
+        rotas = json.map(r => {
+          const dist = calcularDistancia(r.Lat_Origem, r.Lon_Origem, r.Lat_Destino, r.Lon_Destino);
+          return {
+            origem: `${r.Lat_Origem}, ${r.Lon_Origem}`,
+            destino: `${r.Lat_Destino}, ${r.Lon_Destino}`,
+            distancia: dist
+          };
+        });
+
+        renderTabela();
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function renderTabela() {
+      const tbody = document.querySelector('#rotasTabela tbody');
+      tbody.innerHTML = '';
+
+      rotas.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.origem}</td>
+          <td>${r.destino}</td>
+          <td>${r.distancia} km</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function exportarExcel() {
+      if (rotas.length === 0) return alert("Nenhuma rota processada");
+
+      const ws = XLSX.utils.json_to_sheet(rotas);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Rotas');
+      XLSX.writeFile(wb, 'relatorio_rotas.xlsx');
+    }
+  </script>
 
 </body>
 </html>
