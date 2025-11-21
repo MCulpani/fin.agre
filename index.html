@@ -92,6 +92,7 @@
         <input type="file" id="fileInput" accept=".xlsx, .xls" />
         <button id="btnProcess" class="btn-primary">Calcular</button>
         <button id="btnExport" class="btn-secondary">Exportar</button>
+        <button id="btnTemplate" class="btn-secondary">Template</button>
       </div>
 
       <div class="progress-wrapper" style="display:none;" id="progressWrap">
@@ -224,8 +225,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById('btnProcess').addEventListener('click', processarRotas);
     document.getElementById('btnExport').addEventListener('click', exportarExcel);
+    document.getElementById('btnTemplate').addEventListener('click', TemplateExcel);
   </script>
 </body>
 </html>
+
 
 
