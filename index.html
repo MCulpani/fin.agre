@@ -3,232 +3,177 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Roteirização por Latitude/Longitude — Corrigido</title>
+  <title>Roteirização por Latitude/Longitude</title>
+
   <style>
-    body{font-family:Inter,Arial,sans-serif;background:#f0f2f5;margin:0;color:#111}
-    header{background:#111827;color:#fff;padding:20px 28px;font-weight:700}
-    .container{max-width:1200px;margin:20px auto;padding:0 18px}
-    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:18px}
-    .kpi{background:#fff;padding:16px;border-radius:10px;box-shadow:0 6px 18px rgba(2,6,23,0.06)}
-    .kpi .title{font-size:13px;color:#6b7280}
-    .kpi .value{font-size:22px;font-weight:700;margin-top:6px}
-    .card{background:#fff;padding:18px;border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,0.06)}
-    .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-    input[type=file]{padding:10px;border-radius:8px;border:1px dashed #d1d5db;background:#fbfdff}
-    button{padding:10px 12px;border-radius:8px;border:0;cursor:pointer}
-    .btn-primary{background:#2563eb;color:#fff}
-    .btn-secondary{background:#e5e7eb}
-    .progress-wrapper{margin-top:12px;background:#eef2f6;border-radius:8px;height:18px;overflow:hidden}
-    .progress{height:100%;width:0;background:linear-gradient(90deg,#10b981,#06b6d4);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px}
-    table{width:100%;border-collapse:collapse;margin-top:14px}
-    th,td{padding:8px;border-bottom:1px solid #eef2f6;text-align:left;font-size:14px}
-    thead th{background:#fbfdff;font-weight:700}
-    /* login overlay */
-    #login-box{position:fixed;inset:0;background:rgba(17,24,39,0.92);display:flex;align-items:center;justify-content:center;z-index:9999}
-    #loginBoxInner{background:#fff;padding:26px;border-radius:12px;box-shadow:0 12px 30px rgba(2,6,23,0.4);width:380px;max-width:92%}
-    #loginBoxInner h2{margin:0 0 12px;font-size:20px}
-    #loginBoxInner input{width:100%;padding:10px;border-radius:8px;border:1px solid #e5e7eb;margin-bottom:10px}
-    #loginMsg{color:#b91c1c;font-size:13px;display:none}
+    body { font-family: 'Inter', sans-serif; background:#f0f2f5; margin:0; padding:0; }
+    header { background:#111827; color:#fff; padding:25px 40px; font-size:22px; font-weight:600; }
+    .container { padding:30px; max-width:1500px; margin:auto; }
+    .card { background:#fff; padding:25px; border-radius:14px; box-shadow:0 4px 12px rgba(0,0,0,0.08); margin-bottom:25px; }
+    .btn-primary { background:#2563eb; color:#fff; padding:12px 18px; border-radius:10px; border:0; cursor:pointer; }
+    .btn-secondary { background:#e5e7eb; padding:12px 18px; border-radius:10px; border:0; cursor:pointer; }
+    table { width:100%; margin-top:20px; background:#fff; border-collapse:collapse; }
+    th, td { padding:12px; border-bottom:1px solid #e5e7eb; }
+
+    /* LOGIN */
+    #login-overlay{
+      position:fixed; inset:0; background:#111827; display:flex; align-items:center; justify-content:center;
+      z-index:9999;
+    }
+    #login-box{
+      background:#fff; padding:30px; width:360px; border-radius:12px;
+      box-shadow:0 6px 20px rgba(0,0,0,0.35);
+    }
+    #login-box input{
+      width:100%; padding:12px; border-radius:8px; border:1px solid #ccc; margin-bottom:12px;
+    }
+    #loginMsg{ color:#b91c1c; display:none; font-size:13px; margin-top:10px; }
   </style>
 </head>
 <body>
 
-<!-- LOGIN OVERLAY -->
-<div id="login-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#111827;display:flex;align-items:center;justify-content:center;z-index:9999;">
-  <div style="background:white;padding:28px;border-radius:12px;width:340px;box-shadow:0 6px 20px rgba(0,0,0,0.35);">
-    <h2 style="margin:0 0 15px 0;text-align:center;">Login</h2>
-    <input id="loginUser" placeholder="Usuário" style="width:100%;padding:12px;border-radius:8px;border:1px solid #ccc;margin-bottom:12px">
-    <input id="loginPass" placeholder="Senha" type="password" style="width:100%;padding:12px;border-radius:8px;border:1px solid #ccc;margin-bottom:18px">
-    <button id="loginBtn" style="width:100%;background:#2563eb;color:white;padding:12px;border-radius:8px;border:0;font-weight:700;cursor:pointer">Entrar</button>
-    <div id="loginMsg" style="margin-top:10px;color:#b91c1c;font-size:13px;display:none"></div>
+<!-- LOGIN -->
+<div id="login-overlay">
+  <div id="login-box">
+    <h2 style="text-align:center; margin:0 0 12px 0;">Login</h2>
+    <input id="loginUser" placeholder="Usuário">
+    <input id="loginPass" type="password" placeholder="Senha">
+
+    <button id="loginBtn" class="btn-primary" style="width:100%; font-weight:700;">Entrar</button>
+    <div id="loginMsg"></div>
   </div>
 </div>
 
-  <div id="login-box">
-    <div id="loginBoxInner">
-      <h2>Entrar</h2>
-      <input id="loginUser" placeholder="Usuário (ex: admin)" />
-      <input id="loginPass" placeholder="Senha (ex: 1234)" type="password" />
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button id="loginBtn" class="btn-primary" style="flex:1">Entrar</button>
-        <button id="loginCancel" class="btn-secondary" style="flex:0">Cancelar</button>
-      </div>
-      <div id="loginMsg"></div>
+<header>Roteirizador Inteligente • Dashboard</header>
+<div class="container">
+  <div class="card">
+    <h2>Carregar planilha</h2>
+    <input type="file" id="fileInput" accept=".xlsx,.xls">
+    <button class="btn-primary" onclick="processarRotas()">Processar Rotas</button>
+    <button class="btn-secondary" onclick="exportarExcel()">Gerar Relatório</button>
+
+    <div style="width:100%; background:#e5e7eb; height:26px; border-radius:8px; margin-top:15px; overflow:hidden;">
+      <div id="progress" style="width:0%; height:100%; background:#2563eb; color:#fff; display:flex; align-items:center; justify-content:center;">0%</div>
     </div>
+
+    <table id="rotasTabela">
+      <thead>
+        <tr>
+          <th>Origem</th><th>Lat O</th><th>Lng O</th>
+          <th>Destino</th><th>Lat D</th><th>Lng D</th><th>Distância</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
+</div>
 
-  <header>Roteirizador Inteligente — Corrigido</header>
-  <div class="container">
-    <div class="kpi-grid">
-      <div class="kpi"><div class="title">Total de Rotas</div><div id="kpi_total" class="value">0</div></div>
-      <div class="kpi"><div class="title">Distância Total (km)</div><div id="kpi_dist_total" class="value">0</div></div>
-      <div class="kpi"><div class="title">Maior Rota (km)</div><div id="kpi_maior" class="value">0</div></div>
-      <div class="kpi"><div class="title">Menor Rota (km)</div><div id="kpi_menor" class="value">0</div></div>
-    </div>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-    <div class="card">
-      <h2>Carregar planilha</h2>
-      <div class="controls">
-        <input id="fileInput" type="file" accept=".xlsx,.xls" />
-        <button id="btnProcess" class="btn-primary">Processar Rotas</button>
-        <button id="btnExport" class="btn-secondary">Gerar Relatório</button>
-      </div>
-
-      <div class="progress-wrapper" id="progressWrap" style="display:none"><div id="progress" class="progress">0%</div></div>
-
-      <table id="rotasTabela">
-        <thead>
-          <tr><th>Origem</th><th>Origem (Lat)</th><th>Origem (Lng)</th><th>Destino</th><th>Destino (Lat)</th><th>Destino (Lng)</th><th>Distância (km)</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script>
-  // Single clean script: login + processing + export
-  (function(){
-    // ---- LOGIN ----
-    const VALID_USER = 'admin';
-    const VALID_PASS = '1234';
-    const loginBox = document.getElementById('login-box');
-    const loginUser = document.getElementById('loginUser');
-    const loginPass = document.getElementById('loginPass');
-    const loginBtn = document.getElementById('loginBtn');
-    const loginCancel = document.getElementById('loginCancel');
-    const loginMsg = document.getElementById('loginMsg');
-
-    function hideLogin(){ try{ loginBox.style.display = 'none'; }catch(e){} }
-    function showLoginMsg(t){ loginMsg.textContent = t; loginMsg.style.display = 'block'; }
-
-    loginBtn.addEventListener('click', function(){
-      const u = (loginUser.value||'').trim();
-      const p = (loginPass.value||'').trim();
-      if(u===VALID_USER && p===VALID_PASS){ try{ sessionStorage.setItem('app_logged','1'); }catch(e){} hideLogin(); }
-      else showLoginMsg('Usuário ou senha incorretos');
-    });
-    loginPass.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); loginBtn.click(); }});
-    loginCancel.addEventListener('click', function(){ hideLogin(); });
-    try{ if(sessionStorage.getItem('app_logged')==='1') hideLogin(); }catch(e){}
-
-    // ---- ROUTES PROCESSING ----
-    const XLSX = window.XLSX;
-    let rotas = [];
-
-    function parseNumber(v){ if(v===null||v===undefined) return null; const s=String(v).trim().replace(/\s+/g,'').replace(',','.'); const n=parseFloat(s); return isNaN(n)?null:n; }
-
-    async function getDrivingDistance(lat1, lon1, lat2, lon2){
-      // OSRM public router
-      const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`;
-      try{ const res = await fetch(url); const j = await res.json(); if(j && j.routes && j.routes.length) return Number((j.routes[0].distance/1000).toFixed(3)); }
-      catch(e){ console.error('OSRM error',e); }
-      return null;
-    }
-
-    function renderTable(){
-      const tbody = document.querySelector('#rotasTabela tbody'); tbody.innerHTML='';
-      rotas.forEach(r=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${escapeHtml(r.origem||'')}</td><td>${r.lat_o||''}</td><td>${r.lng_o||''}</td><td>${escapeHtml(r.destino||'')}</td><td>${r.lat_d||''}</td><td>${r.lng_d||''}</td><td>${r.distancia!=null?r.distancia+' km':'—'}</td>`;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function updateKPIs(){
-      document.getElementById('kpi_total').textContent = rotas.length;
-      const vals = rotas.map(r=>r.distancia).filter(v=>typeof v==='number');
-      const total = vals.reduce((s,a)=>s+a,0);
-      document.getElementById('kpi_dist_total').textContent = total.toFixed(3) + ' km';
-      document.getElementById('kpi_maior').textContent = (vals.length?Math.max(...vals).toFixed(3):0) + ' km';
-      document.getElementById('kpi_menor').textContent = (vals.length?Math.min(...vals).toFixed(3):0) + ' km';
-    }
-
-    function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-    function showProgress(p){ const wrap=document.getElementById('progressWrap'); wrap.style.display='block'; const bar=document.getElementById('progress'); bar.style.width = p+'%'; bar.textContent = p+'%'; }
-    function hideProgress(){ const wrap=document.getElementById('progressWrap'); wrap.style.display='none'; }
-
-    async function processFile(file){
-      if(!file) return alert('Selecione um arquivo');
-      const reader = new FileReader();
-      reader.onload = async function(e){
-        try{
-          const data = new Uint8Array(e.target.result);
-          const wb = XLSX.read(data,{type:'array'});
-          const sheet = wb.Sheets[wb.SheetNames[0]];
-          const rows = XLSX.utils.sheet_to_json(sheet,{defval:''});
-
-          rotas = [];
-          const total = rows.length;
-          let done = 0;
-          showProgress(0);
-
-          for(const r of rows){
-            const origem = r.origem_cidade ?? r.Origem ?? r['origem_cidade'] ?? r['origem cidade'] ?? '';
-            const destino = r.destino_cidade ?? r.Destino ?? r['destino_cidade'] ?? r['destino cidade'] ?? '';
-            const lat_o = parseNumber(r.origem_lat ?? r.LatitudeOrigem ?? r['origem_lat'] ?? r['origem lat']);
-            const lng_o = parseNumber(r.origem_lng ?? r.LongitudeOrigem ?? r['origem_lng'] ?? r['origem lng']);
-            const lat_d = parseNumber(r.destino_lat ?? r.LatitudeDestino ?? r['destino_lat'] ?? r['destino lat']);
-            const lng_d = parseNumber(r.destino_lng ?? r.LongitudeDestino ?? r['destino_lng'] ?? r['destino lng']);
-
-            let dist = null;
-            if(lat_o!==null && lng_o!==null && lat_d!==null && lng_d!==null){
-              dist = await getDrivingDistance(lat_o,lng_o,lat_d,lng_d);
-              // small delay to be polite with public OSRM
-              await new Promise(res=>setTimeout(res,150));
-            }
-
-            rotas.push({origem,destino,lat_o,lng_o,lat_d,lng_d,distancia:dist});
-            done++;
-            showProgress(Math.round((done/total)*100));
-            renderTable();
-            updateKPIs();
-          }
-
-          hideProgress();
-        }catch(err){ hideProgress(); alert('Erro ao ler arquivo: '+err.message); console.error(err); }
-      };
-      reader.readAsArrayBuffer(file);
-    }
-
-    function exportExcel(){
-      if(!rotas||!rotas.length) return alert('Nenhuma rota processada');
-      const ws = XLSX.utils.json_to_sheet(rotas.map(r=>({Origem:r.origem, OrigemLat:r.lat_o, OrigemLng:r.lng_o, Destino:r.destino, DestinoLat:r.lat_d, DestinoLng:r.lng_d, DistanciaKm:r.distancia})));
-      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Rotas'); XLSX.writeFile(wb,'rotas_processadas.xlsx');
-    }
-
-    // bind UI
-    document.getElementById('btnProcess').addEventListener('click', function(){ const f=document.getElementById('fileInput').files[0]; processFile(f); });
-    document.getElementById('btnExport').addEventListener('click', exportExcel);
-
-  })();
-  </script>
 <script>
-// LOGIN SIMPLES
-(function(){
-  const overlay = document.getElementById('login-overlay');
-  const user = document.getElementById('loginUser');
-  const pass = document.getElementById('loginPass');
-  const btn  = document.getElementById('loginBtn');
-  const msg  = document.getElementById('loginMsg');
+// LOGIN FUNCIONAL — FIXADO
+
+document.addEventListener("DOMContentLoaded", () => {
+  const overlay = document.getElementById("login-overlay");
+  const user = document.getElementById("loginUser");
+  const pass = document.getElementById("loginPass");
+  const btn  = document.getElementById("loginBtn");
+  const msg  = document.getElementById("loginMsg");
 
   function doLogin(){
-    const u = user.value.trim();
-    const p = pass.value.trim();
-
-    if(u === 'admin' && p === '1234'){
-      overlay.style.display = 'none';
-      msg.style.display = 'none';
+    if(user.value === "admin" && pass.value === "1234"){
+      overlay.style.display = "none";
+      msg.style.display = "none";
     } else {
-      msg.textContent = 'Usuário ou senha incorretos!';
-      msg.style.display = 'block';
+      msg.textContent = "Usuário ou senha incorretos!";
+      msg.style.display = "block";
     }
   }
 
-  btn.addEventListener('click', doLogin);
-  pass.addEventListener('keydown', e=>{ if(e.key==='Enter'){ doLogin(); } });
-})();
+  btn.addEventListener("click", doLogin);
+  pass.addEventListener("keydown", e => { if(e.key === "Enter") doLogin(); });
+});
+
+// PROCESSAMENTO ROTAS
+let transactions = [];
+
+async function getDrivingDistance(lat1, lon1, lat2, lon2){
+  try{
+    const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if(data.routes?.length) return Math.round(data.routes[0].distance/1000);
+  } catch(e){ console.log(e); }
+  return null;
+}
+
+function parseNumber(v){ return v ? parseFloat(String(v).replace(',', '.')) : null; }
+
+function render(){
+  const tbody = document.querySelector('#rotasTabela tbody');
+  tbody.innerHTML = '';
+  transactions.forEach(t =>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${t.origem}</td><td>${t.lat_o}</td><td>${t.lng_o}</td>
+                    <td>${t.destino}</td><td>${t.lat_d}</td><td>${t.lng_d}</td>
+                    <td>${t.distancia} km</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function processarRotas(){
+  const file = document.getElementById("fileInput").files[0];
+  if(!file) return alert("Selecione um arquivo!");
+
+  const progress = document.getElementById("progress");
+  progress.style.width = "0%";
+  progress.textContent = "0%";
+
+  const reader = new FileReader();
+  reader.onload = evt =>{
+    const workbook = XLSX.read(new Uint8Array(evt.target.result), {type:"array"});
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet);
+
+    transactions = [];
+
+    let total = rows.length;
+    let count = 0;
+
+    (async()=>{
+      for(const r of rows){
+        const origem = r.origem_cidade;
+        const destino = r.destino_cidade;
+        const lat_o = parseNumber(r.origem_lat);
+        const lng_o = parseNumber(r.origem_lng);
+        const lat_d = parseNumber(r.destino_lat);
+        const lng_d = parseNumber(r.destino_lng);
+
+        let dist = null;
+        if(lat_o && lng_o && lat_d && lng_d){
+          dist = await getDrivingDistance(lat_o, lng_o, lat_d, lng_d);
+        }
+
+        transactions.push({ origem, destino, lat_o, lng_o, lat_d, lng_d, distancia:dist });
+
+        count++;
+        let pct = Math.round((count/total)*100);
+        progress.style.width = pct+"%";
+        progress.textContent = pct+"%";
+      }
+      render();
+    })();
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+function exportarExcel(){
+  const ws = XLSX.utils.json_to_sheet(transactions);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Rotas");
+  XLSX.writeFile(wb, "rotas_processadas.xlsx");
+}
 </script>
 
 </body>
