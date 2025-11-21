@@ -220,19 +220,25 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js">function login(){
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+function login(){
   const u = document.getElementById('user').value;
   const p = document.getElementById('pass').value;
-
-  if(u === 'admin' && p === '1234'){
-    document.getElementById('login-box').style.display = 'none';
+  if (u === "admin" && p === "1234") {
+    document.getElementById("login-box").style.display = "none";
   } else {
-    alert('Usuário ou senha incorretos!');
+    alert("Usuário ou senha incorretos!");
   }
 }
 
-
-  <script>
+document.addEventListener("DOMContentLoaded", function(){
+  const btn = document.getElementById("loginBtn");
+  if(btn) btn.addEventListener("click", login);
+  const pass = document.getElementById("pass");
+  if(pass) pass.addEventListener("keydown", function(e){ if(e.key === "Enter"){ login(); }});
+});
+</script>
     function loginAction(){
       const u = document.getElementById('user').value;
       const p = document.getElementById('pass').value;
