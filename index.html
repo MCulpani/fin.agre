@@ -166,13 +166,14 @@
 </div>
 
 <script>
-// === LOGIN CORRIGIDO ===
+// LOGIN SIMPLES FUNCIONAL
+
 document.addEventListener("DOMContentLoaded", () => {
-  const btn = document.getElementById("loginBtn");
   const user = document.getElementById("loginUser");
   const pass = document.getElementById("loginPass");
   const loginBox = document.getElementById("login-box");
   const loginMsg = document.getElementById("loginMsg");
+  const btn = document.getElementById("loginBtn");
 
   function doLogin(){
     const u = user.value.trim();
@@ -189,39 +190,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if(btn){ btn.addEventListener("click", doLogin); }
 
-  if(pass){
-    pass.addEventListener("keydown", e => {
-      if(e.key === "Enter"){
-        e.preventDefault();
-        doLogin();
-      }
-    });
-  }
-});
-
-// === FIM LOGIN ===
-// LOGIN LIMPO E FUNCIONAL
-function loginAction(){
-  const u = document.getElementById('loginUser').value;
-  const p = document.getElementById('loginPass').value;
-
-  if(u === "admin" && p === "1234"){
-      document.getElementById("login-box").style.display = "none";
-  } else {
-      alert("Usuário ou senha incorretos!");
-  }
-}
-
-document.addEventListener("DOMContentLoaded", function(){
-  const btn = document.getElementById("loginBtn");
-  if(btn) btn.addEventListener("click", loginAction);
-
-  const pass = document.getElementById("loginPass");
-  if(pass){
-      pass.addEventListener("keydown", e=>{
-          if(e.key === "Enter"){ loginAction(); }
-      });
-  }
+  pass.addEventListener("keydown", e => {
+    if(e.key === "Enter"){
+      e.preventDefault();
+      doLogin();
+    }
+  });
 });
 </script>
 
