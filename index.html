@@ -56,13 +56,23 @@
 <!-- LOGIN -->
 <div id="login-overlay">
   <div id="login-box">
-    <h2 style="text-align:center; margin:0 0 12px 0;">Login</h2>
+    
+    <!-- LOGO MODERNA -->
+    <div style="width:100%; display:flex; justify-content:center; margin-bottom:18px;">
+        <svg width="70" height="70" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="#2563eb" stroke-width="2.2"/>
+            <path d="M12 6v6l4 2" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M8 20c1.5-1.2 3.7-2 6-2s4.5.8 6 2" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+    </div>
+
+    <h2 style="text-align:center; margin:0 0 14px 0; font-weight:700;">Login</h2>
+
     <input id="loginUser" placeholder="Usuário">
     <input id="loginPass" type="password" placeholder="Senha">
 
     <button id="loginBtn" class="btn-primary" style="width:100%; font-weight:700;">Entrar</button>
     <div id="loginMsg"></div>
-  </div>
 </div>
 
   <header>Calculadora de Distância - KM</header>
@@ -227,5 +237,6 @@ document.addEventListener("DOMContentLoaded", () => {
   </script>
 </body>
 </html>
+
 
 
