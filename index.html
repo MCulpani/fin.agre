@@ -3,10 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Calculadora de distância - KM</title>
-
+  <title>Calculadora de Distância - KM</title>
   <style>
-body {
+    body {
       margin: 0;
       font-family: Inter, Arial, sans-serif;
       background: #f0f2f5;
@@ -35,24 +34,11 @@ body {
     table { width:100%; border-collapse:collapse; margin-top:18px; background:white; border-radius:10px; overflow:hidden }
     th, td { text-align:left; padding:10px 12px; border-bottom:1px solid #eef2f6 }
     th { background:#fbfdff; font-weight:700 }
-    @media (max-width:720px){ input[type=file]{ width:100% } .controls{
+    @media (max-width:720px){ input[type=file]{ width:100% } .controls{flex-direction:column; align-items:stretch} }
   </style>
 </head>
 <body>
-
-<!-- LOGIN -->
-<div id="login-overlay">
-  <div id="login-box">
-    <h2 style="text-align:center; margin:0 0 12px 0;">Login</h2>
-    <input id="loginUser" placeholder="Usuário">
-    <input id="loginPass" type="password" placeholder="Senha">
-
-    <button id="loginBtn" class="btn-primary" style="width:100%; font-weight:700;">Entrar</button>
-    <div id="loginMsg"></div>
-  </div>
-</div>
-
-<header>Roteirizador Inteligente • Dashboard</header>
+  <header>Calculadora de Distância - KM</header>
   <div class="container">
     <div class="grid" id="kpiGrid">
       <div class="card">
@@ -77,8 +63,8 @@ body {
       <h3 style="margin:0 0 12px 0">Importar & Processar</h3>
       <div class="controls">
         <input type="file" id="fileInput" accept=".xlsx, .xls" />
-        <button id="btnProcess" class="btn-primary">Processar Rotas</button>
-        <button id="btnExport" class="btn-secondary">Gerar Relatório</button>
+        <button id="btnProcess" class="btn-primary">Calcular</button>
+        <button id="btnExport" class="btn-secondary">Exportar</button>
       </div>
 
       <div class="progress-wrapper" style="display:none;" id="progressWrap">
@@ -102,33 +88,10 @@ body {
     </div>
 
   </div>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-<script>
-// LOGIN FUNCIONAL — FIXADO
-
-document.addEventListener("DOMContentLoaded", () => {
-  const overlay = document.getElementById("login-overlay");
-  const user = document.getElementById("loginUser");
-  const pass = document.getElementById("loginPass");
-  const btn  = document.getElementById("loginBtn");
-  const msg  = document.getElementById("loginMsg");
-
-  function doLogin(){
-    if(user.value === "admin" && pass.value === "1234"){
-      overlay.style.display = "none";
-      msg.style.display = "none";
-    } else {
-      msg.textContent = "Usuário ou senha incorretos!";
-      msg.style.display = "block";
-    }
-  }
-
-  btn.addEventListener("click", doLogin);
-  pass.addEventListener("keydown", e => { if(e.key === "Enter") doLogin(); });
-});
-
-// estado
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script>
+    // estado
     let rotas = [];
 
     async function getDrivingDistance(lat1, lon1, lat2, lon2){
@@ -205,14 +168,12 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById('kpi_menor').textContent = (values.length? Math.min(...values).toFixed(3):0) + ' km';
     }
 
+    function exportarExcel(){ if(!rotas || rotas.length===0){ alert('Nenhuma rota processada'); return; } const ws = XLSX.utils.json_to_sheet(rotas); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Rotas'); XLSX.writeFile(wb,'rotas_processadas.xlsx'); }
 
-function exportarExcel(){
-  const ws = XLSX.utils.json_to_sheet(transactions);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Rotas");
-  XLSX.writeFile(wb, "rotas_processadas.xlsx");
-}
-</script>
+    function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+    document.getElementById('btnProcess').addEventListener('click', processarRotas);
+    document.getElementById('btnExport').addEventListener('click', exportarExcel);
+  </script>
 </body>
 </html>
