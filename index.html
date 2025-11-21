@@ -148,76 +148,73 @@
 <body>
 
   <!-- LOGIN OVERLAY -->
-  <div id="login-box" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#111827;display:flex;align-items:center;justify-content:center;z-index:9999;">
-    <div style="background:white;padding:30px;border-radius:12px;width:320px;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
-      <h2 style="margin-top:0;text-align:center;">Login</h2>
-      <input id="user" placeholder="Usuário" style="width:100%;padding:12px;border-radius:8px;border:1px solid #ccc;margin-bottom:12px;">
-      <input id="pass" placeholder="Senha" type="password" style="width:100%;padding:12px;border-radius:8px;border:1px solid #ccc;margin-bottom:12px;">
-      <button id="loginBtn" style="width:100%;background:#2563eb;color:white;padding:12px;border-radius:8px;border:0;cursor:pointer;">Entrar</button>
+  <!-- LOGIN OVERLAY: bloco único e seguro -->
+<div id="login-box" data-login-overlay style="position:fixed;top:0;left:0;width:100%;height:100%;background:#111827;display:flex;align-items:center;justify-content:center;z-index:9999;">
+  <div style="background:white;padding:30px;border-radius:12px;width:360px;max-width:92%;box-shadow:0 6px 20px rgba(0,0,0,0.35);">
+    <h2 style="margin:0 0 12px 0;text-align:center;">Login</h2>
+
+    <input id="loginUser" placeholder="Usuário" style="width:100%;padding:12px;border-radius:8px;border:1px solid #ccc;margin-bottom:12px;font-size:14px">
+    <input id="loginPass" placeholder="Senha" type="password" style="width:100%;padding:12px;border-radius:8px;border:1px solid #ccc;margin-bottom:12px;font-size:14px">
+
+    <div style="display:flex;gap:10px">
+      <button id="loginBtn" style="flex:1;background:#2563eb;color:white;padding:12px;border-radius:8px;border:0;cursor:pointer;font-weight:700">Entrar</button>
+      <button id="loginCancel" style="flex:0;background:#e5e7eb;padding:12px;border-radius:8px;border:0;cursor:pointer;">Cancelar</button>
     </div>
+
+    <div id="loginMsg" style="margin-top:10px;color:#b91c1c;display:none;font-size:13px"></div>
   </div>
-  <div id="login-box" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#111827;display:flex;align-items:center;justify-content:center;z-index:9999;">
-    <div style="background:white;padding:30px;border-radius:12px;width:320px;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
-      <h2 style="margin-top:0;text-align:center;">Login</h2>
-      <input id="user" placeholder="Usuário" style="width:100%;padding:12px;border-radius:8px;border:1px solid #ccc;margin-bottom:12px;">
-      <input id="pass" placeholder="Senha" type="password" style="width:100%;padding:12px;border-radius:8px;border:1px solid #ccc;margin-bottom:12px;">
-      <button onclick="login()" style="width:100%;background:#2563eb;color:white;padding:12px;border-radius:8px;">Entrar</button>
-    </div>
-  </div>
+</div>
 
-  <header>Roteirizador Inteligente • Dashboard</header>
+<script>
+(function(){
+  document.addEventListener('DOMContentLoaded', function(){
+    const overlays = Array.from(document.querySelectorAll('#login-box'));
+    if(overlays.length > 1){ overlays.slice(1).forEach(el => el.remove()); }
 
-  <div class="container">
+    const overlay = document.querySelector('#login-box');
+    if(!overlay) return;
 
-    <!-- KPI CARDS -->
-    <div class="kpi-grid">
-      <div class="kpi-card">
-        <div class="kpi-title">Total de Rotas Processadas</div>
-        <div id="kpi_total" class="kpi-value">0</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-title">Distância Total (km)</div>
-        <div id="kpi_dist_total" class="kpi-value">0</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-title">Maior Rota (km)</div>
-        <div id="kpi_maior" class="kpi-value">0</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-title">Menor Rota (km)</div>
-        <div id="kpi_menor" class="kpi-value">0</div>
-      </div>
-    </div>
+    const userEl = document.getElementById('loginUser');
+    const passEl = document.getElementById('loginPass');
+    const btn = document.getElementById('loginBtn');
+    const cancel = document.getElementById('loginCancel');
+    const msg = document.getElementById('loginMsg');
 
-    <div class="card">
-      <h2>Carregar planilha Excel</h2>
+    const VALID_USER = 'admin';
+    const VALID_PASS = '1234';
 
-      <input type="file" id="fileInput" accept=".xlsx, .xls" />
-      <button class="btn-primary" onclick="processarRotas()">Processar Rotas</button>
-      <button class="btn-secondary" onclick="exportarExcel()">Gerar Relatório</button>
+    window.login = function(){
+      const u = (userEl && userEl.value || '').trim();
+      const p = (passEl && passEl.value   || '').trim();
 
-      <div class="progress-wrapper">
-        <div id="progress">0%</div>
-      </div>
+      if(u === VALID_USER && p === VALID_PASS){
+        overlay.style.display = 'none';
+        try { sessionStorage.setItem('app_logged', '1'); } catch(e){}
+        msg.style.display = 'none';
+        return true;
+      } else {
+        msg.textContent = 'Usuário ou senha incorretos.';
+        msg.style.display = 'block';
+        return false;
+      }
+    };
 
-      <table id="rotasTabela">
-        <thead>
-          <tr>
-            <th>Origem</th>
-            <th>Origem (Lat)</th>
-            <th>Origem (Lng)</th>
-            <th>Destino</th>
-            <th>Destino (Lat)</th>
-            <th>Destino (Lng)</th>
-            <th>Distância (km)</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
+    if(btn) btn.addEventListener('click', function(e){ e.preventDefault(); window.login(); });
+    if(passEl) passEl.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); window.login(); }});
 
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    if(cancel) cancel.addEventListener('click', function(e){
+      e.preventDefault();
+      overlay.style.display = 'none';
+    });
+
+    try {
+      if(sessionStorage.getItem('app_logged') === '1'){
+        overlay.style.display = 'none';
+      }
+    } catch(e){}
+  });
+})();
+</script>
 
   <script>
     function loginAction(){
