@@ -166,29 +166,28 @@
 </div>
 
 <script>
-function login(){
-    const u = document.getElementById('user').value;
-    const p = document.getElementById('pass').value;
+// LOGIN LIMPO E FUNCIONAL
+function loginAction(){
+  const u = document.getElementById('loginUser').value;
+  const p = document.getElementById('loginPass').value;
 
-    if (u === "admin" && p === "1234") {
-        document.getElementById("login-box").style.display = "none";
-    } else {
-        alert("Usuário ou senha incorretos!");
-    }
+  if(u === "admin" && p === "1234"){
+      document.getElementById("login-box").style.display = "none";
+  } else {
+      alert("Usuário ou senha incorretos!");
+  }
 }
 
 document.addEventListener("DOMContentLoaded", function(){
-    const btn = document.getElementById("loginBtn");
-    if(btn) btn.addEventListener("click", login);
+  const btn = document.getElementById("loginBtn");
+  if(btn) btn.addEventListener("click", loginAction);
 
-    const pass = document.getElementById("pass");
-    if(pass) {
-        pass.addEventListener("keydown", function(e){
-            if(e.key === "Enter"){
-                login();
-            }
-        });
-    }
+  const pass = document.getElementById("loginPass");
+  if(pass){
+      pass.addEventListener("keydown", e=>{
+          if(e.key === "Enter"){ loginAction(); }
+      });
+  }
 });
 </script>
 
