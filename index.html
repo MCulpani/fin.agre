@@ -250,8 +250,63 @@ function processarRotas(){
     let count = 0;
 
     (async () => {
-      for (const r of rows) {
-        const origem = r.origem_cidade;
-        const destino = r.destino_cidade;
-        const lat_o = parseNumber(r.origem_lat);
-        const lng_o = parseNumber
+     for(const r of rows){
+            const origem = r.origem_cidade ?? r.Origem ?? r['origem cidade'] ?? '';
+            const destino = r.destino_cidade ?? r.Destino ?? r['destino cidade'] ?? '';
+            const lat_o = parseNumber(r.origem_lat ?? r.LatitudeOrigem ?? r['origem_lat']);
+            const lng_o = parseNumber(r.origem_lng ?? r.LongitudeOrigem ?? r['origem_lng']);
+            const lat_d = parseNumber(r.destino_lat ?? r.LatitudeDestino ?? r['destino_lat']);
+            const lng_d = parseNumber(r.destino_lng ?? r.LongitudeDestino ?? r['destino_lng']);
+
+            if(origem && destino && lat_o !== null && lng_o !== null && lat_d !== null && lng_d !== null){
+              const dist = await getDrivingDistance(lat_o,lng_o,lat_d,lng_d);
+              rotas.push({origem,destino,lat_o,lng_o,lat_d,lng_d,distancia:dist});
+            } else {
+              // adiciona registro com erro visual
+              rotas.push({origem,destino,lat_o,lng_o,lat_d,lng_d,distancia:null});
+            }
+
+            processed++; showProgress(Math.round((processed/total)*100));
+          }
+
+          renderTable(); updateKPIs(); hideProgress();
+        }catch(err){ console.error(err); alert('Erro ao processar planilha: '+err.message); hideProgress(); }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function renderTable(){
+      const tbody = document.querySelector('#rotasTabela tbody'); tbody.innerHTML = '';
+      rotas.forEach(r=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${escapeHtml(r.origem)}</td>
+          <td>${r.lat_o ?? ''}</td>
+          <td>${r.lng_o ?? ''}</td>
+          <td>${escapeHtml(r.destino)}</td>
+          <td>${r.lat_d ?? ''}</td>
+          <td>${r.lng_d ?? ''}</td>
+          <td>${r.distancia !== null && r.distancia !== undefined ? r.distancia + ' km' : '—'}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function updateKPIs(){
+      document.getElementById('kpi_total').textContent = rotas.length;
+      const values = rotas.map(r=>r.distancia).filter(v=>typeof v==='number');
+      const totalKm = values.reduce((s,v)=>s+v,0);
+      document.getElementById('kpi_dist_total').textContent = totalKm.toFixed(3) + ' km';
+      document.getElementById('kpi_maior').textContent = (values.length? Math.max(...values).toFixed(3):0) + ' km';
+      document.getElementById('kpi_menor').textContent = (values.length? Math.min(...values).toFixed(3):0) + ' km';
+    }
+
+    function exportarExcel(){ if(!rotas || rotas.length===0){ alert('Nenhuma rota processada'); return; } const ws = XLSX.utils.json_to_sheet(rotas); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Rotas'); XLSX.writeFile(wb,'rotas_processadas.xlsx'); }
+
+    function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    document.getElementById('btnProcess').addEventListener('click', processarRotas);
+    document.getElementById('btnExport').addEventListener('click', exportarExcel);
+  </script>
+</body>
+</html>
+
