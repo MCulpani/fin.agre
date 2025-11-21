@@ -166,54 +166,30 @@
 </div>
 
 <script>
-(function(){
-  document.addEventListener('DOMContentLoaded', function(){
-    const overlays = Array.from(document.querySelectorAll('#login-box'));
-    if(overlays.length > 1){ overlays.slice(1).forEach(el => el.remove()); }
+function login(){
+    const u = document.getElementById('user').value;
+    const p = document.getElementById('pass').value;
 
-    const overlay = document.querySelector('#login-box');
-    if(!overlay) return;
+    if (u === "admin" && p === "1234") {
+        document.getElementById("login-box").style.display = "none";
+    } else {
+        alert("Usuário ou senha incorretos!");
+    }
+}
 
-    const userEl = document.getElementById('loginUser');
-    const passEl = document.getElementById('loginPass');
-    const btn = document.getElementById('loginBtn');
-    const cancel = document.getElementById('loginCancel');
-    const msg = document.getElementById('loginMsg');
+document.addEventListener("DOMContentLoaded", function(){
+    const btn = document.getElementById("loginBtn");
+    if(btn) btn.addEventListener("click", login);
 
-    const VALID_USER = 'admin';
-    const VALID_PASS = '1234';
-
-    window.login = function(){
-      const u = (userEl && userEl.value || '').trim();
-      const p = (passEl && passEl.value   || '').trim();
-
-      if(u === VALID_USER && p === VALID_PASS){
-        overlay.style.display = 'none';
-        try { sessionStorage.setItem('app_logged', '1'); } catch(e){}
-        msg.style.display = 'none';
-        return true;
-      } else {
-        msg.textContent = 'Usuário ou senha incorretos.';
-        msg.style.display = 'block';
-        return false;
-      }
-    };
-
-    if(btn) btn.addEventListener('click', function(e){ e.preventDefault(); window.login(); });
-    if(passEl) passEl.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); window.login(); }});
-
-    if(cancel) cancel.addEventListener('click', function(e){
-      e.preventDefault();
-      overlay.style.display = 'none';
-    });
-
-    try {
-      if(sessionStorage.getItem('app_logged') === '1'){
-        overlay.style.display = 'none';
-      }
-    } catch(e){}
-  });
-})();
+    const pass = document.getElementById("pass");
+    if(pass) {
+        pass.addEventListener("keydown", function(e){
+            if(e.key === "Enter"){
+                login();
+            }
+        });
+    }
+});
 </script>
 
   
