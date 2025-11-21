@@ -166,18 +166,23 @@
 </div>
 
 <script>
-// LOGIN LIMPO E FUNCIONAL
-window.addEventListener("DOMContentLoaded", () => {
+// LOGIN CORRIGIDO E ÚNICO
+// Remove todos os scripts antigos — apenas este deve existir
+
+document.addEventListener("DOMContentLoaded", () => {
   const loginBox = document.getElementById("login-box");
   const user = document.getElementById("loginUser");
   const pass = document.getElementById("loginPass");
   const btn = document.getElementById("loginBtn");
   const msg = document.getElementById("loginMsg");
 
-  function doLogin(){
-    if(user.value.trim() === "admin" && pass.value.trim() === "1234"){
+  function doLogin() {
+    const u = user.value.trim();
+    const p = pass.value.trim();
+
+    if (u === "admin" && p === "1234") {
       msg.style.display = "none";
-      loginBox.style.display = "none";
+      loginBox.style.display = "none"; // LOGIN FUNCIONANDO
     } else {
       msg.textContent = "Usuário ou senha incorretos!";
       msg.style.display = "block";
@@ -185,8 +190,9 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   btn.addEventListener("click", doLogin);
+
   pass.addEventListener("keydown", e => {
-    if(e.key === "Enter"){
+    if (e.key === "Enter") {
       e.preventDefault();
       doLogin();
     }
