@@ -166,16 +166,15 @@
 </div>
 
 <script>
-// LOGIN SIMPLES FUNCIONAL
-
+// LOGIN CORRIGIDO
 document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("loginBtn");
   const user = document.getElementById("loginUser");
   const pass = document.getElementById("loginPass");
   const loginBox = document.getElementById("login-box");
   const loginMsg = document.getElementById("loginMsg");
-  const btn = document.getElementById("loginBtn");
 
-  function doLogin(){
+  function login(){
     const u = user.value.trim();
     const p = pass.value.trim();
 
@@ -188,14 +187,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  if(btn){ btn.addEventListener("click", doLogin); }
-
-  pass.addEventListener("keydown", e => {
-    if(e.key === "Enter"){
-      e.preventDefault();
-      doLogin();
-    }
-  });
+  if(btn) btn.addEventListener("click", login);
+  if(pass){
+    pass.addEventListener("keydown", e => {
+      if(e.key === "Enter"){
+        e.preventDefault();
+        login();
+      }
+    });
+  }
 });
 </script>
 
