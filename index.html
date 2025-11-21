@@ -166,36 +166,31 @@
 </div>
 
 <script>
-// LOGIN CORRIGIDO
-document.addEventListener("DOMContentLoaded", () => {
-  const btn = document.getElementById("loginBtn");
+// LOGIN LIMPO E FUNCIONAL
+window.addEventListener("DOMContentLoaded", () => {
+  const loginBox = document.getElementById("login-box");
   const user = document.getElementById("loginUser");
   const pass = document.getElementById("loginPass");
-  const loginBox = document.getElementById("login-box");
-  const loginMsg = document.getElementById("loginMsg");
+  const btn = document.getElementById("loginBtn");
+  const msg = document.getElementById("loginMsg");
 
-  function login(){
-    const u = user.value.trim();
-    const p = pass.value.trim();
-
-    if(u === "admin" && p === "1234"){
-      loginMsg.style.display = "none";
+  function doLogin(){
+    if(user.value.trim() === "admin" && pass.value.trim() === "1234"){
+      msg.style.display = "none";
       loginBox.style.display = "none";
     } else {
-      loginMsg.textContent = "Usuário ou senha incorretos!";
-      loginMsg.style.display = "block";
+      msg.textContent = "Usuário ou senha incorretos!";
+      msg.style.display = "block";
     }
   }
 
-  if(btn) btn.addEventListener("click", login);
-  if(pass){
-    pass.addEventListener("keydown", e => {
-      if(e.key === "Enter"){
-        e.preventDefault();
-        login();
-      }
-    });
-  }
+  btn.addEventListener("click", doLogin);
+  pass.addEventListener("keydown", e => {
+    if(e.key === "Enter"){
+      e.preventDefault();
+      doLogin();
+    }
+  });
 });
 </script>
 
