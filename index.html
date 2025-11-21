@@ -166,6 +166,40 @@
 </div>
 
 <script>
+// === LOGIN CORRIGIDO ===
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("loginBtn");
+  const user = document.getElementById("loginUser");
+  const pass = document.getElementById("loginPass");
+  const loginBox = document.getElementById("login-box");
+  const loginMsg = document.getElementById("loginMsg");
+
+  function doLogin(){
+    const u = user.value.trim();
+    const p = pass.value.trim();
+
+    if(u === "admin" && p === "1234"){
+      loginMsg.style.display = "none";
+      loginBox.style.display = "none";
+    } else {
+      loginMsg.textContent = "Usuário ou senha incorretos!";
+      loginMsg.style.display = "block";
+    }
+  }
+
+  if(btn){ btn.addEventListener("click", doLogin); }
+
+  if(pass){
+    pass.addEventListener("keydown", e => {
+      if(e.key === "Enter"){
+        e.preventDefault();
+        doLogin();
+      }
+    });
+  }
+});
+
+// === FIM LOGIN ===
 // LOGIN LIMPO E FUNCIONAL
 function loginAction(){
   const u = document.getElementById('loginUser').value;
